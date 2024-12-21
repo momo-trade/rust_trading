@@ -15,3 +15,10 @@ pub fn unix_time_to_jst(unix_time_millis: u64) -> String {
         None => "Invalid Timestamp".to_string(), // Handle invalid timestamps
     }
 }
+
+pub fn calculate_time_range(hours_back: u64) -> (u64, u64) {
+    let now = Utc::now();
+    let end_time = now.timestamp_millis() as u64;
+    let start_time = end_time - hours_back * 60 * 60 * 1000;
+    (start_time, end_time)
+}
