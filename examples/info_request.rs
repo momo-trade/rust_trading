@@ -128,4 +128,25 @@ async fn main() {
             error!("Failed to fetch candles: {}", err);
         }
     }
+
+    match client.fetch_funding_history(coin, start_time, None).await {
+        Ok(funding_history) => {
+            info!("Funding history: {:#?}", funding_history);
+        }
+        Err(err) => {
+            error!("Failed to fetch funding history: {}", err);
+        }
+    }
+
+    match client
+        .fetch_user_funding_history(address, start_time, None)
+        .await
+    {
+        Ok(user_funding_history) => {
+            info!("User funding history: {:#?}", user_funding_history);
+        }
+        Err(err) => {
+            error!("Failed to fetch user funding history: {}", err);
+        }
+    }
 }

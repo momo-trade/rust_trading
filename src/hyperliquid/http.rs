@@ -8,7 +8,8 @@ use ethers::signers::LocalWallet;
 use ethers::types::H160;
 use hyperliquid_rust_sdk::{
     BaseUrl, ClientCancelRequest, ClientLimit, ClientOrder, ClientOrderRequest, ExchangeClient,
-    ExchangeDataStatus, ExchangeResponseStatus, InfoClient, UserStateResponse,
+    ExchangeDataStatus, ExchangeResponseStatus, FundingHistoryResponse, InfoClient,
+    UserFundingResponse, UserStateResponse,
 };
 use log::{error, info};
 use std::collections::HashMap;
@@ -189,6 +190,36 @@ impl HttpClient {
         let user_fills: Vec<CustomUserFills> =
             response.into_iter().map(CustomUserFills::from).collect();
         Ok(user_fills)
+    }
+
+    pub async fn fetch_funding_history(
+        &self,
+        coin: &str,
+        start_time: u64,
+        end_time: Option<u64>,
+    ) -> Result<Vec<FundingHistoryResponse>> {
+        let response = self
+            .info
+            .funding_history(coin.to_string(), start_time, end_time)
+            .await
+            .context("Failed to fetch funding history")?;
+
+        Ok(response)
+    }
+
+    pub async fn fetch_user_funding_history(
+        &self,
+        address: H160,
+        start_time: u64,
+        end_time: Option<u64>,
+    ) -> Result<Vec<UserFundingResponse>> {
+        let response = self
+            .info
+            .user_funding_history(address, start_time, end_time)
+            .await
+            .context("Failed to fetch user funding history")?;
+
+        Ok(response)
     }
 
     pub async fn fetch_trades(&self, coin: &str) -> Result<Vec<CustomTrade>> {
