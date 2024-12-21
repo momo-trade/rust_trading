@@ -1,11 +1,12 @@
+use super::order::LimitOrderParams;
+use crate::hyperliquid::model::{CustomOpenOrders, CustomOprderStatus, CustomUserTokenBalance};
 use ethers::signers::LocalWallet;
+use ethers::types::H160;
 use hyperliquid_rust_sdk::{
     BaseUrl, ClientCancelRequest, ClientLimit, ClientOrder, ClientOrderRequest, ExchangeClient,
     ExchangeDataStatus, ExchangeResponseStatus, InfoClient,
 };
 use log::{error, info};
-
-use super::order::LimitOrderParams;
 
 pub struct HttpClient {
     info: InfoClient,
@@ -117,6 +118,52 @@ impl HttpClient {
                 error!("{}", error_msg);
                 Err(error_msg)
             }
+        }
+    }
+
+    pub async fn fetch_open_orders(&self, address: H160) -> Result<Vec<CustomOpenOrders>, String> {
+        match self.info.open_orders(address).await {
+            Ok(response) => {
+                let open_orders: Vec<CustomOpenOrders> =
+                    response.into_iter().map(CustomOpenOrders::from).collect();
+                Ok(open_orders)
+            }
+            Err(err) => Err(format!("Failed to fetch open orders: {}", err)),
+        }
+    }
+
+    pub async fn fetch_user_state(&self) {
+        todo!("fetch_user_state")
+    }
+
+    pub async fn fetch_token_balances(
+        &self,
+        address: H160,
+    ) -> Result<Vec<CustomUserTokenBalance>, String> {
+        match self.info.user_token_balances(address).await {
+            Ok(response) => {
+                let token_balance: Vec<CustomUserTokenBalance> = response
+                    .balances
+                    .into_iter()
+                    .map(CustomUserTokenBalance::from)
+                    .collect();
+                Ok(token_balance)
+            }
+            Err(err) => Err(format!("Failed to fetch token balances: {}", err)),
+        }
+    }
+
+    pub async fn query_order_status(
+        &self,
+        address: H160,
+        oid: u64,
+    ) -> Result<CustomOprderStatus, String> {
+        match self.info.query_order_by_oid(address, oid).await {
+            Ok(response) => {
+                let order_status: CustomOprderStatus = response.into();
+                Ok(order_status)
+            }
+            Err(err) => Err(format!("Failed to query order status: {}", err)),
         }
     }
 }
