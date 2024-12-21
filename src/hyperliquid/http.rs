@@ -1,4 +1,4 @@
-use super::order::LimitOrderParams;
+use super::order::{LimitOrderParams, MarketOrderParams};
 use crate::hyperliquid::model::{
     CustomCandle, CustomOpenOrders, CustomOprderStatus, CustomTrade, CustomUserFills,
     CustomUserTokenBalance,
@@ -14,9 +14,17 @@ use hyperliquid_rust_sdk::{
 use log::{error, info};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
+pub struct AssetInfo {
+    pub internal_name: String,
+    pub index: usize,
+    pub sz_decimals: u8,
+}
+
 pub struct HttpClient {
     info: InfoClient,
     exchange: ExchangeClient,
+    token_info: HashMap<String, AssetInfo>,
 }
 
 impl HttpClient {
@@ -35,7 +43,69 @@ impl HttpClient {
             .await
             .context("Failed to initialize ExchangeClient")?;
 
-        Ok(Self { info, exchange })
+        let mut token_info = HashMap::new();
+        token_info.extend(Self::build_spot_asset_map(&info).await?);
+        token_info.extend(Self::build_perp_asset_map(&info).await?);
+
+        Ok(Self {
+            info,
+            exchange,
+            token_info,
+        })
+    }
+
+    async fn build_spot_asset_map(info: &InfoClient) -> Result<HashMap<String, AssetInfo>> {
+        let spot_meta = info
+            .spot_meta()
+            .await
+            .context("Failed to fetch Spot meta")?;
+        let mut asset_map = HashMap::new();
+
+        for meta in spot_meta.universe.iter() {
+            if meta.tokens.len() == 2 {
+                let token_0_index = meta.tokens[0];
+                let token_1_index = meta.tokens[1];
+
+                if let (Some(token_0), Some(token_1)) = (
+                    spot_meta.tokens.iter().find(|t| t.index == token_0_index),
+                    spot_meta.tokens.iter().find(|t| t.index == token_1_index),
+                ) {
+                    let key = format!("{}/{}", token_0.name, token_1.name);
+                    asset_map.insert(
+                        key,
+                        AssetInfo {
+                            internal_name: meta.name.clone(),
+                            index: meta.index + 10000,
+                            sz_decimals: token_0.sz_decimals,
+                        },
+                    );
+                }
+            }
+        }
+
+        Ok(asset_map)
+    }
+
+    async fn build_perp_asset_map(info: &InfoClient) -> Result<HashMap<String, AssetInfo>> {
+        let perp_meta = info.meta().await.context("Failed to fetch Perp meta")?;
+        let mut asset_map = HashMap::new();
+
+        for (index, meta) in perp_meta.universe.iter().enumerate() {
+            asset_map.insert(
+                meta.name.clone(),
+                AssetInfo {
+                    internal_name: meta.name.clone(),
+                    index,
+                    sz_decimals: meta.sz_decimals as u8,
+                },
+            );
+        }
+
+        Ok(asset_map)
+    }
+
+    pub fn get_asset_info(&self, symbol: &str) -> Option<&AssetInfo> {
+        self.token_info.get(symbol)
     }
 
     pub async fn limit_order(&self, params: LimitOrderParams) -> Result<u64> {
@@ -78,8 +148,87 @@ impl HttpClient {
         }
     }
 
-    pub async fn market_order(&self) {
-        todo!("market_order")
+    pub async fn market_order(&self, params: MarketOrderParams) -> Result<u64> {
+        let (adjusted_price, sz_decimals) = self
+            .calculate_slippage_price(&params.asset, params.is_buy, 0.01)
+            .await
+            .unwrap();
+
+        let order = ClientOrderRequest {
+            asset: params.asset,
+            is_buy: params.is_buy,
+            reduce_only: false,
+            limit_px: adjusted_price,
+            sz: round_to_decimals(params.size, sz_decimals),
+            cloid: params.cloid,
+            order_type: ClientOrder::Limit(ClientLimit {
+                tif: "Ioc".to_string(),
+            }),
+        };
+
+        let response_status = self
+            .exchange
+            .order(order, None)
+            .await
+            .context("Failed to place market order")?;
+
+        match response_status {
+            ExchangeResponseStatus::Ok(exchange_response) => {
+                let oid = exchange_response
+                    .data
+                    .and_then(|data| {
+                        data.statuses.first().map(|status| match status {
+                            ExchangeDataStatus::Filled(order) => Some(order.oid),
+                            ExchangeDataStatus::Resting(order) => Some(order.oid),
+                            _ => None,
+                        })
+                    })
+                    .flatten()
+                    .context("No valid statuses or unexpected status in exchange response.")?;
+                info!("Order placed successfully with oid: {}", oid);
+                Ok(oid)
+            }
+            ExchangeResponseStatus::Err(err) => Err(anyhow!("Exchange returned an error: {}", err)),
+        }
+    }
+
+    async fn calculate_slippage_price(
+        &self,
+        asset: &str,
+        is_buy: bool,
+        slippage: f64,
+    ) -> Result<(f64, u32)> {
+        let asset_info = self
+            .get_asset_info(asset)
+            .context(format!("sz_decimals not found for asset {}", asset))?;
+
+        let sz_decimals = asset_info.sz_decimals;
+        let max_decimals: u32 = if asset_info.index < 10000 { 6 } else { 8 };
+
+        let price_decimals = max_decimals.saturating_sub(sz_decimals as u32);
+        let all_mids = self
+            .fetch_all_mids()
+            .await
+            .context("Failed to fetch all mids")?;
+
+        let current_price = all_mids
+            .get(asset_info.internal_name.as_str())
+            .context("Failed to fetch current price")?;
+
+        let slippage_factor = if is_buy {
+            1.0 + slippage
+        } else {
+            1.0 - slippage
+        };
+
+        let adjusted_price = current_price * slippage_factor;
+        let adjusted_price = round_to_significant_and_decimal(adjusted_price, 5, price_decimals);
+
+        Ok((adjusted_price, sz_decimals.into()))
+    }
+
+    pub async fn close_position(&self) {
+        todo!("close_position")
     }
 
     pub async fn cancel_order(&self, asset: String, oid: u64) -> Result<String> {
@@ -124,6 +273,7 @@ impl HttpClient {
         Ok(open_orders)
     }
 
+    // Perp positinos
     pub async fn fetch_user_state(&self, address: H160) -> Result<UserStateResponse> {
         let response = self
             .info
@@ -133,6 +283,7 @@ impl HttpClient {
         Ok(response)
     }
 
+    // Spot positions
     pub async fn fetch_token_balances(&self, address: H160) -> Result<Vec<CustomUserTokenBalance>> {
         let response = self
             .info
@@ -250,4 +401,17 @@ impl HttpClient {
         let candles: Vec<CustomCandle> = resposne.into_iter().map(CustomCandle::from).collect();
         Ok(candles)
     }
+}
+
+fn round_to_decimals(value: f64, decimals: u32) -> f64 {
+    let factor = 10f64.powi(decimals as i32);
+    (value * factor).round() / factor
+}
+
+fn round_to_significant_and_decimal(value: f64, sig_figs: u32, max_decimals: u32) -> f64 {
+    let abs_value = value.abs();
+    let magnitude = abs_value.log10().floor() as i32;
+    let scale = 10f64.powi(sig_figs as i32 - magnitude - 1);
+    let rounded = (abs_value * scale).round() / scale;
+    round_to_decimals(rounded.copysign(value), max_decimals)
 }

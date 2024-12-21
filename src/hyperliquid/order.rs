@@ -38,3 +38,24 @@ impl LimitOrderParams {
         self
     }
 }
+
+pub struct MarketOrderParams {
+    pub asset: String,
+    pub is_buy: bool,
+    pub size: f64,
+    pub cloid: Option<Uuid>,
+}
+impl MarketOrderParams {
+    pub fn new(asset: String, is_buy: bool, size: f64) -> Self {
+        Self {
+            asset,
+            is_buy,
+            size,
+            cloid: None,
+        }
+    }
+    pub fn cloid(mut self, value: Uuid) -> Self {
+        self.cloid = Some(value);
+        self
+    }
+}

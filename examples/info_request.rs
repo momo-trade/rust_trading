@@ -37,15 +37,15 @@ async fn main() {
     // Fetch and display token balances for the wallet address
     match client.fetch_token_balances(address).await {
         Ok(token_balances) => {
-            // info!("Token balances: {:#?}", token_balances);
-            let usdc = match token_balances.iter().find(|balance| balance.coin == "USDC") {
-                Some(balance) => balance,
-                None => {
-                    error!("USDC balance not found");
-                    return;
-                }
-            };
-            info!("USDC balance: {}", usdc.total);
+            info!("Token balances: {:#?}", token_balances);
+            // let usdc = match token_balances.iter().find(|balance| balance.coin == "USDC") {
+            //     Some(balance) => balance,
+            //     None => {
+            //         error!("USDC balance not found");
+            //         return;
+            //     }
+            // };
+            // info!("USDC balance: {}", usdc.total);
         }
         Err(err) => {
             error!("Failed to fetch token balances: {}", err);
@@ -60,16 +60,6 @@ async fn main() {
         }
         Err(err) => {
             error!("Failed to query order status: {}", err);
-        }
-    }
-
-    // Fetch the user's state and log the result or an error message
-    match client.fetch_user_state(address).await {
-        Ok(user_state) => {
-            info!("User state: {:#?}", user_state);
-        }
-        Err(err) => {
-            error!("Failed to fetch user state: {}", err);
         }
     }
 
@@ -147,6 +137,25 @@ async fn main() {
         }
         Err(err) => {
             error!("Failed to fetch user funding history: {}", err);
+        }
+    }
+
+    // Try to fetch AssetInfo for the symbol "BTC" (Perp example)
+    if let Some(asset_info) = client.get_asset_info("BTC") {
+        info!("Asset info: {:#?}", asset_info);
+    }
+    // Try to fetch AssetInfo for the symbol "HYPE/USDC" (Spot example)
+    if let Some(asset_info) = client.get_asset_info("HYPE/USDC") {
+        info!("Asset info: {:#?}", asset_info);
+    }
+
+    // Fetch the user's state and log the result or an error message
+    match client.fetch_user_state(address).await {
+        Ok(user_state) => {
+            info!("User state: {:#?}", user_state);
+        }
+        Err(err) => {
+            error!("Failed to fetch user state: {}", err);
         }
     }
 }
