@@ -4,7 +4,7 @@ use log::{error, info};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::{watch, RwLock};
 use tokio::time::Duration;
 
@@ -22,9 +22,9 @@ impl Default for WsData {
         Self {
             all_mids: HashMap::new(),
             trades: Vec::new(),
-            max_trades: 10000, // デフォルトの上限を設定
+            max_trades: 10000, // Default limit for trades
             candles: Vec::new(),
-            max_candles: 10000,
+            max_candles: 10000, // Default limit for candles
         }
     }
 }
@@ -44,7 +44,7 @@ impl WsData {
             .iter_mut()
             .find(|candle| candle.time_open == new_candle.time_open)
         {
-            *existing_candle = new_candle; //同じ時刻のcandleを上書き
+            *existing_candle = new_candle; // Overwrite the existing candle with the same time
         } else {
             self.candles.push(new_candle);
         }
@@ -102,9 +102,9 @@ impl WebSocketManager {
                 coin: coin.to_string(),
                 interval: interval.to_string(),
             }),
-            // ["L2Book"] => Some(Subscription::L2Book { /* デフォルトのパラメータ */ }),
-            // ["UserEvents"] => Some(Subscription::UserEvents { /* デフォルトのパラメータ */ }),
-            // ["UserFills"] => Some(Subscription::UserFills { /* デフォルトのパラメータ */ }),
+            // ["L2Book"] => Some(Subscription::L2Book { ),
+            // ["UserEvents"] => Some(Subscription::UserEvents {  }),
+            // ["UserFills"] => Some(Subscription::UserFills {  }),
             // ["Positions"] => Some(Subscription::Positions),
             // ["Orders"] => Some(Subscription::Orders),
             // ["Balances"] => Some(Subscription::Balances),
@@ -139,7 +139,6 @@ impl WebSocketManager {
         self.subscriptions.read().await.iter().cloned().collect()
     }
 
-    /// 再接続時に現在の`subscriptions`を再登録する
     async fn resubscribe_all(
         &self,
         sender: tokio::sync::mpsc::UnboundedSender<Message>,
@@ -166,6 +165,7 @@ impl WebSocketManager {
         Ok(())
     }
 
+    // Process incoming WebSocket messages
     async fn process_message(
         message: Message,
         ws_data: Arc<RwLock<WsData>>,
@@ -212,6 +212,7 @@ impl WebSocketManager {
         }
     }
 
+    // Start the WebSocket manager loop
     pub fn start(self: &Arc<Self>) {
         let manager = self.clone();
         tokio::spawn(async move {
@@ -219,6 +220,7 @@ impl WebSocketManager {
         });
     }
 
+    // Main WebSocket connection loop
     async fn run_loop(self: Arc<Self>) {
         info!("Starting WebSocketManager...");
         let mut reconnect_attempts = 0;
@@ -228,7 +230,7 @@ impl WebSocketManager {
                 match self.resubscribe_all(tx.clone()).await {
                     Ok(_) => {
                         info!("Subscribed successfully.");
-                        reconnect_attempts = 0; // リセット
+                        reconnect_attempts = 0; // Reset on success
                         (tx, rx)
                     }
                     Err(e) => {
@@ -252,11 +254,11 @@ impl WebSocketManager {
                         Self::process_message(message, ws_data.clone(), &ws_data_sender).await;
                     }
                     Ok(_) = ws_data_receiver.changed() => {
-                        // データ更新を検知（必要なら何か処理を追加）
+                        // Detect data updates (optional processing can be added here)
                     }
                     _ = tokio::time::sleep(timeout_duration) => {
                         error!("WebSocketManager timeout. Reconnecting...");
-                        break; // 再接続を試みる
+                        break; // Attempt reconnection
                     }
                 }
             }

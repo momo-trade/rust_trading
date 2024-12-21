@@ -17,8 +17,8 @@ impl From<Trade> for CustomTrade {
         CustomTrade {
             coin: trade.coin,
             side: trade.side,
-            price: trade.px.parse().unwrap_or(0.0), // px を f64 に変換
-            size: trade.sz.parse().unwrap_or(0.0),  // sz を f64 に変換
+            price: trade.px.parse().unwrap_or(0.0), // Convert the "px" field from string to f64
+            size: trade.sz.parse().unwrap_or(0.0),  // Convert the "sz" field from string to f64
             timestamp: trade.time,
             hash: trade.hash,
             trade_id: trade.tid,
@@ -45,11 +45,11 @@ impl From<CandleData> for CustomCandle {
         CustomCandle {
             coin: candle.coin,
             interval: candle.interval,
-            open: candle.open.parse().unwrap_or(0.0), // open を f64 に変換
-            high: candle.high.parse().unwrap_or(0.0), // high を f64 に変換
-            low: candle.low.parse().unwrap_or(0.0),   // low を f64 に変換
-            close: candle.close.parse().unwrap_or(0.0), // close を f64 に変換
-            volume: candle.volume.parse().unwrap_or(0.0), // volume を f64 に変換
+            open: candle.open.parse().unwrap_or(0.0), // Convert the "open" field from string to f64
+            high: candle.high.parse().unwrap_or(0.0), // Convert the "high" field from string to f64
+            low: candle.low.parse().unwrap_or(0.0),   // Convert the "low" field from string to f64
+            close: candle.close.parse().unwrap_or(0.0), // Convert the "close" field from string to f64
+            volume: candle.volume.parse().unwrap_or(0.0), // Convert the "volume" field from string to f64
             num_trades: candle.num_trades,
             time_close: candle.time_close,
             time_open: candle.time_open,
