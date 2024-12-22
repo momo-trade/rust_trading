@@ -1,8 +1,9 @@
 use dotenv::dotenv;
 use ethers::signers::LocalWallet;
-use hyperliquid_rust_sdk::Subscription;
+// use hyperliquid_rust_sdk::Subscription;
 use log::{info, warn};
 use rust_trading::hyperliquid::http::HttpClient;
+use rust_trading::hyperliquid::subscriptions::Subscription;
 use rust_trading::hyperliquid::websocket::WebSocketManager;
 use rust_trading::utils::time::unix_time_to_jst;
 use std::env;

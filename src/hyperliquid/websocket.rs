@@ -1,6 +1,7 @@
 use crate::hyperliquid::model::{CustomCandle, CustomTrade};
+use crate::hyperliquid::subscriptions::Subscription;
 use anyhow::{Context, Result};
-use hyperliquid_rust_sdk::{BaseUrl, InfoClient, Message, Subscription};
+use hyperliquid_rust_sdk::{BaseUrl, InfoClient, Message, Subscription as HyperliquidSubscription};
 use log::{error, info};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -83,8 +84,9 @@ impl WebSocketManager {
     }
 
     pub async fn subscribe(&self, subscription: Subscription) -> Result<()> {
-        let subscription_key =
-            serde_json::to_string(&subscription).context("Failed to serialize subscription")?;
+        let internal_subscription: HyperliquidSubscription = subscription.into();
+        let subscription_key = serde_json::to_string(&internal_subscription)
+            .context("Failed to serialize subscription")?;
 
         let mut subscriptions = self.subscription.write().await;
         if subscriptions.contains_key(&subscription_key) {
@@ -96,7 +98,7 @@ impl WebSocketManager {
             .info_client
             .write()
             .await
-            .subscribe(subscription, sender)
+            .subscribe(internal_subscription, sender)
             .await
             .context("Failed to subscribe")?;
 
@@ -106,8 +108,9 @@ impl WebSocketManager {
     }
 
     pub async fn unsubscribe(&self, subscription: Subscription) -> Result<()> {
-        let subscription_key =
-            serde_json::to_string(&subscription).context("Failed to serialize subscription")?;
+        let internal_subscription: HyperliquidSubscription = subscription.into();
+        let subscription_key = serde_json::to_string(&internal_subscription)
+            .context("Failed to serialize subscription")?;
 
         let mut subscriptions = self.subscription.write().await;
         if let Some(subscription_id) = subscriptions.remove(&subscription_key) {
