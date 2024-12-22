@@ -1,6 +1,5 @@
 use dotenv::dotenv;
 use ethers::signers::LocalWallet;
-use hyperliquid_rust_sdk::BaseUrl;
 use hyperliquid_rust_sdk::Subscription;
 use log::{info, warn};
 use rust_trading::hyperliquid::http::HttpClient;
@@ -24,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let wallet = LocalWallet::from_str(&private_key).expect("Invalid private key");
 
     // Initialize the WebSocketManager with the mainnet URL
-    let ws_manager = WebSocketManager::new(BaseUrl::Mainnet).await;
+    let ws_manager = WebSocketManager::new(true).await;
     let http_manager = HttpClient::new(true, wallet).await.unwrap();
     // Set the maximum number of trades to store
     ws_manager.set_max_trades(200).await;

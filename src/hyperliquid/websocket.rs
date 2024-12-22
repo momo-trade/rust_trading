@@ -62,7 +62,13 @@ pub struct WebSocketManager {
 }
 
 impl WebSocketManager {
-    pub async fn new(base_url: BaseUrl) -> Arc<Self> {
+    pub async fn new(is_mainnet: bool) -> Arc<Self> {
+        let base_url = if is_mainnet {
+            BaseUrl::Mainnet
+        } else {
+            BaseUrl::Testnet
+        };
+
         let info_client = Arc::new(RwLock::new(
             InfoClient::with_reconnect(None, Some(base_url))
                 .await
