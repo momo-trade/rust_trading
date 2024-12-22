@@ -1,54 +1,72 @@
+use dotenv::dotenv;
+use ethers::signers::LocalWallet;
 use hyperliquid_rust_sdk::BaseUrl;
 use hyperliquid_rust_sdk::Subscription;
 use log::{info, warn};
+use rust_trading::hyperliquid::http::HttpClient;
 use rust_trading::hyperliquid::websocket::WebSocketManager;
 use rust_trading::utils::time::unix_time_to_jst;
+use std::env;
+use std::str::FromStr;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize the logger for logging purposes
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
+    // Load environment variables from a .env file
+    dotenv().ok();
+
+    // Retrieve the private key from the environment variables
+    let private_key = env::var("WALLET_SECRET").expect("WALLET_SECRET not set");
+
+    // Create a LocalWallet instance from the private key
+    let wallet = LocalWallet::from_str(&private_key).expect("Invalid private key");
+
     // Initialize the WebSocketManager with the mainnet URL
     let ws_manager = WebSocketManager::new(BaseUrl::Mainnet).await;
-
-    // Add subscriptions for AllMids, Trades (BTC), and Candle (BTC with a 1m interval)
-    ws_manager.add_subscription(Subscription::AllMids).await;
-    ws_manager
-        .add_subscription(Subscription::Trades { coin: "BTC".into() })
-        .await;
-    ws_manager
-        .add_subscription(Subscription::Candle {
-            coin: "BTC".into(),
-            interval: "1m".into(),
-        })
-        .await;
-
+    let http_manager = HttpClient::new(true, wallet).await.unwrap();
     // Set the maximum number of trades to store
     ws_manager.set_max_trades(200).await;
 
-    // Start the WebSocket manager to begin receiving messages
-    ws_manager.start();
+    let coin = "HYPE/USDC";
+    let asset_info = http_manager.get_asset_info(coin).unwrap();
+    let internal_name = asset_info.internal_name.clone();
+
+    info!("Asset info: {:#?}", asset_info);
+
+    ws_manager.subscribe(Subscription::AllMids).await?;
+    ws_manager
+        .subscribe(Subscription::Trades {
+            coin: internal_name.clone(),
+        })
+        .await?;
+    ws_manager
+        .subscribe(Subscription::Candle {
+            coin: internal_name.clone(),
+            interval: "1m".to_string(),
+        })
+        .await?;
 
     // Main loop to periodically check and log WebSocket data
     loop {
         // Wait for 10 seconds before the next iteration
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
         // Fetch the latest AllMids data
         let all_mids = ws_manager.get_all_mids().await;
 
-        // Try to get the data for ETH from AllMids
-        let eth = match all_mids.get("ETH") {
+        // Try to get the data for coin from AllMids
+        let target = match all_mids.get(internal_name.as_str()) {
             Some(eth) => eth,
             None => {
-                // Log if ETH data is not found
-                info!("ETH not found in AllMids data");
+                // Log if coin data is not found
+                info!("{} not found in AllMids data", coin);
                 continue; // Skip the rest of the loop
             }
         };
-        // Log the mids data for ETH
-        info!("Mids data for ETH: {}", eth);
+        // Log the mids data for coin
+        info!("Mids data for {}: {}", coin, target);
 
         // Fetch the latest trades data
         let trades = ws_manager.get_trades().await;

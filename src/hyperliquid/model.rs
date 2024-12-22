@@ -129,7 +129,7 @@ impl From<UserTokenBalance> for CustomUserTokenBalance {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomOprderStatus {
+pub struct CustomOrderStatus {
     pub coin: String,
     pub side: String,
     pub price: f64,
@@ -142,20 +142,36 @@ pub struct CustomOprderStatus {
     pub tif: String,
 }
 
-impl From<OrderStatusResponse> for CustomOprderStatus {
+impl From<OrderStatusResponse> for CustomOrderStatus {
     fn from(response: OrderStatusResponse) -> Self {
-        let order = response.order.order;
-        CustomOprderStatus {
-            coin: order.coin,
-            side: order.side,
-            price: order.limit_px.parse().unwrap_or(0.0), // Convert the "price" field from string to f64
-            size: order.sz.parse().unwrap_or(0.0), // Convert the "size" field from string to f64
-            order_id: order.oid,
-            timestamp: order.timestamp,
-            status: response.order.status,
-            reduce_only: order.reduce_only,
-            order_type: order.order_type,
-            tif: order.tif,
+        if let Some(order_info) = response.order {
+            let order = order_info.order;
+            CustomOrderStatus {
+                coin: order.coin,
+                side: order.side,
+                price: order.limit_px.parse().unwrap_or(0.0), // Convert the "price" field from string to f64
+                size: order.sz.parse().unwrap_or(0.0), // Convert the "size" field from string to f64
+                order_id: order.oid,
+                timestamp: order.timestamp,
+                status: order_info.status, // Use the status field from OrderInfo
+                reduce_only: order.reduce_only,
+                order_type: order.order_type,
+                tif: order.tif,
+            }
+        } else {
+            // Handle case where `response.order` is `None`
+            CustomOrderStatus {
+                coin: "".to_string(),
+                side: "".to_string(),
+                price: 0.0,
+                size: 0.0,
+                order_id: 0,
+                timestamp: 0,
+                status: "unknown".to_string(),
+                reduce_only: false,
+                order_type: "".to_string(),
+                tif: "".to_string(),
+            }
         }
     }
 }

@@ -38,14 +38,6 @@ async fn main() {
     match client.fetch_token_balances(address).await {
         Ok(token_balances) => {
             info!("Token balances: {:#?}", token_balances);
-            // let usdc = match token_balances.iter().find(|balance| balance.coin == "USDC") {
-            //     Some(balance) => balance,
-            //     None => {
-            //         error!("USDC balance not found");
-            //         return;
-            //     }
-            // };
-            // info!("USDC balance: {}", usdc.total);
         }
         Err(err) => {
             error!("Failed to fetch token balances: {}", err);

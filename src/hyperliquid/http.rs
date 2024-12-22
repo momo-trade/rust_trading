@@ -1,6 +1,6 @@
 use super::order::{LimitOrderParams, MarketOrderParams};
 use crate::hyperliquid::model::{
-    CustomCandle, CustomOpenOrders, CustomOprderStatus, CustomTrade, CustomUserFills,
+    CustomCandle, CustomOpenOrders, CustomOrderStatus, CustomTrade, CustomUserFills,
     CustomUserTokenBalance,
 };
 use anyhow::{anyhow, Context, Result};
@@ -299,14 +299,14 @@ impl HttpClient {
         Ok(token_balance)
     }
 
-    pub async fn query_order_status(&self, address: H160, oid: u64) -> Result<CustomOprderStatus> {
+    pub async fn query_order_status(&self, address: H160, oid: u64) -> Result<CustomOrderStatus> {
         let response = self
             .info
             .query_order_by_oid(address, oid)
             .await
             .context("Failed to query order status")?;
 
-        let order_status: CustomOprderStatus = response.into();
+        let order_status: CustomOrderStatus = response.into();
         Ok(order_status)
     }
 
