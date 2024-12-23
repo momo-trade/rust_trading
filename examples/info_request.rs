@@ -150,4 +150,17 @@ async fn main() {
             error!("Failed to fetch user state: {}", err);
         }
     }
+
+    let token_id = "0x0d01dc56dcaaca66ad901c959b4011ec"; // HYPE
+    match client.fetch_token_details(token_id.to_string()).await {
+        Ok(token_details) => {
+            info!(
+                "Token details: {}, max supply: {}",
+                token_details.name, token_details.max_supply
+            );
+        }
+        Err(err) => {
+            error!("Failed to fetch token details: {}", err);
+        }
+    }
 }

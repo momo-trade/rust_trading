@@ -1,9 +1,12 @@
-use crate::hyperliquid::model::{CustomCandle, CustomTrade};
+use crate::hyperliquid::model::{CustomCandle, CustomTrade, CustomUserFills};
 use crate::hyperliquid::subscriptions::Subscription;
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
+use ethers::types::H160;
 use hyperliquid_rust_sdk::{BaseUrl, InfoClient, Message, Subscription as HyperliquidSubscription};
 use log::{error, info};
 use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::{mpsc::UnboundedSender, RwLock};
@@ -15,6 +18,8 @@ pub struct WsData {
     pub max_trades: usize,
     pub candles: Vec<CustomCandle>,
     pub max_candles: usize,
+    pub user_fills: Vec<CustomUserFills>,
+    pub max_fills: usize,
 }
 
 impl Default for WsData {
@@ -25,6 +30,8 @@ impl Default for WsData {
             max_trades: 10000, // Default limit for trades
             candles: Vec::new(),
             max_candles: 10000, // Default limit for candles
+            user_fills: Vec::new(),
+            max_fills: 10000,
         }
     }
 }
@@ -53,6 +60,36 @@ impl WsData {
             let excess = self.candles.len() - self.max_candles;
             self.candles.drain(0..excess);
         }
+    }
+
+    pub fn add_fills(&mut self, fills: Vec<CustomUserFills>, user: H160) {
+        self.user_fills.extend(fills.clone());
+
+        if self.user_fills.len() > self.max_fills {
+            let excess = self.user_fills.len() - self.max_fills;
+            self.user_fills.drain(0..excess);
+        }
+
+        if let Err(e) = self.append_fills_to_file(fills, user) {
+            error!("Failed to append fills to file: {}", e);
+        }
+    }
+
+    fn append_fills_to_file(&self, fills: Vec<CustomUserFills>, user: H160) -> Result<()> {
+        let file_name = format!("{:?}_fills.log", user);
+
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(file_name)
+            .context("Failed to open user fills file")?;
+
+        for fill in fills {
+            let json = serde_json::to_string(&fill).context("Failed to serialize fill")?;
+            writeln!(file, "{}", json).context("Failed to write to user fills file")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -147,6 +184,19 @@ impl WebSocketManager {
                         let mut data = ws_data.write().await;
                         data.add_candle(custom_candle);
                     }
+                    Message::UserFills(user_fills) => {
+                        if user_fills.data.is_snapshot != Some(true) {
+                            let custom_fills: Vec<CustomUserFills> = user_fills
+                                .data
+                                .fills
+                                .into_iter()
+                                .map(CustomUserFills::from)
+                                .collect();
+
+                            let mut data = ws_data.write().await;
+                            data.add_fills(custom_fills, user_fills.data.user);
+                        }
+                    }
                     Message::NoData => {
                         error!("Disconnected from websocket");
                     }
@@ -170,6 +220,12 @@ impl WebSocketManager {
         ws_data.max_candles = max_candles;
         info!("Updated max candles to {}", max_candles);
     }
+
+    pub async fn set_max_fills(&self, max_fills: usize) {
+        let mut ws_data = self.ws_data.write().await;
+        ws_data.max_fills = max_fills;
+        info!("Updated max user fills to {}", max_fills);
+    }
     pub async fn get_all_mids(&self) -> HashMap<String, String> {
         self.ws_data.read().await.all_mids.clone()
     }
@@ -180,5 +236,9 @@ impl WebSocketManager {
 
     pub async fn get_candles(&self) -> Vec<CustomCandle> {
         self.ws_data.read().await.candles.clone()
+    }
+
+    pub async fn get_user_fills(&self) -> Vec<CustomUserFills> {
+        self.ws_data.read().await.user_fills.clone()
     }
 }

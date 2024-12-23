@@ -1,7 +1,7 @@
 use super::order::{LimitOrderParams, MarketOrderParams};
 use crate::hyperliquid::model::{
     CustomCandle, CustomOpenOrders, CustomOrderStatus, CustomTrade, CustomUserFills,
-    CustomUserTokenBalance,
+    CustomUserTokenBalance, TokenDetails,
 };
 use anyhow::{anyhow, Context, Result};
 use ethers::signers::LocalWallet;
@@ -11,7 +11,7 @@ use hyperliquid_rust_sdk::{
     ExchangeDataStatus, ExchangeResponseStatus, FundingHistoryResponse, InfoClient,
     UserFundingResponse, UserStateResponse,
 };
-use log::{error, info};
+use log::{debug, error, info};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -400,6 +400,19 @@ impl HttpClient {
 
         let candles: Vec<CustomCandle> = resposne.into_iter().map(CustomCandle::from).collect();
         Ok(candles)
+    }
+
+    pub async fn fetch_token_details(&self, token_id: String) -> Result<TokenDetails> {
+        let request = serde_json::json!({"type": "tokenDetails", "tokenId": token_id});
+        let data = serde_json::to_string(&request).context("Failed to serialize request")?;
+        let response = self
+            .info
+            .http_client
+            .post("/info", data)
+            .await
+            .context("Failed to fetch token details")?;
+        debug!("Token details: {:#?}", response);
+        serde_json::from_str(&response).context("Failed to deserialize response")
     }
 }
 

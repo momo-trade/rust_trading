@@ -1,8 +1,10 @@
 use hyperliquid_rust_sdk::{
     CandleData, CandlesSnapshotResponse, OpenOrdersResponse, OrderStatusResponse,
-    RecentTradesResponse, Trade, UserFillsResponse, UserTokenBalance,
+    RecentTradesResponse, Trade, TradeInfo, UserFillsResponse, UserTokenBalance,
 };
-use serde::{Deserialize, Serialize};
+use serde::de::{self, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
+use std::fmt;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomTrade {
@@ -189,6 +191,7 @@ pub struct CustomUserFills {
     pub start_position: f64,
     pub size: f64,
     pub timestamp: u64,
+    pub fee: f64,
 }
 
 impl From<UserFillsResponse> for CustomUserFills {
@@ -205,6 +208,116 @@ impl From<UserFillsResponse> for CustomUserFills {
             start_position: fills.start_position.parse().unwrap_or(0.0), // Convert the "start_position" field from string to f64
             size: fills.sz.parse().unwrap_or(0.0), // Convert the "size" field from string to f64
             timestamp: fills.time,
+            fee: fills.fee.parse().unwrap_or(0.0), // Convert the "fee" field from string to f64
         }
     }
+}
+
+impl From<TradeInfo> for CustomUserFills {
+    fn from(fills: TradeInfo) -> Self {
+        CustomUserFills {
+            closed_pnl: fills.closed_pnl.parse().unwrap_or(0.0), // Convert the "closed_pnl" field from string to f64
+            coin: fills.coin,
+            crossed: fills.crossed,
+            dir: fills.dir,
+            hash: fills.hash,
+            order_id: fills.oid,
+            price: fills.px.parse().unwrap_or(0.0), // Convert the "price" field from string to f64
+            side: fills.side,
+            start_position: fills.start_position.parse().unwrap_or(0.0), // Convert the "start_position" field from string to f64
+            size: fills.sz.parse().unwrap_or(0.0), // Convert the "size" field from string to f64
+            timestamp: fills.time,
+            fee: fills.fee.parse().unwrap_or(0.0), // Convert the "fee" field from string to f64
+        }
+    }
+}
+
+// カスタムデシリアライザ: String -> f64
+fn string_to_f64<'de, D>(deserializer: D) -> Result<f64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    s.parse::<f64>().map_err(serde::de::Error::custom)
+}
+
+// user_balances 用のカスタムデシリアライザ
+fn deserialize_user_balances<'de, D>(deserializer: D) -> Result<Vec<(String, f64)>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_seq(UserBalancesVisitor)
+}
+
+// Visitor を実装
+struct UserBalancesVisitor;
+
+impl<'de> Visitor<'de> for UserBalancesVisitor {
+    type Value = Vec<(String, f64)>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a sequence of (String, String) where the second String is a number")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let mut balances = Vec::new();
+
+        while let Some((address, balance_str)) = seq.next_element::<(String, String)>()? {
+            let balance = balance_str.parse::<f64>().map_err(de::Error::custom)?;
+            balances.push((address, balance));
+        }
+
+        Ok(balances)
+    }
+}
+
+// JSONデシリアライズ対象の構造体
+#[derive(Debug, Deserialize)]
+pub struct Genesis {
+    #[serde(
+        rename = "userBalances",
+        deserialize_with = "deserialize_user_balances"
+    )]
+    #[allow(dead_code)]
+    user_balances: Vec<(String, f64)>,
+
+    #[serde(rename = "existingTokenBalances")]
+    #[allow(dead_code)]
+    existing_token_balances: Option<Vec<(String, String)>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TokenDetails {
+    pub name: String,
+    #[serde(rename = "maxSupply", deserialize_with = "string_to_f64")]
+    pub max_supply: f64,
+    #[serde(rename = "totalSupply", deserialize_with = "string_to_f64")]
+    pub total_supply: f64,
+    #[serde(rename = "circulatingSupply", deserialize_with = "string_to_f64")]
+    pub circulating_supply: f64,
+    #[serde(rename = "szDecimals")]
+    pub size_decimals: u32,
+    #[serde(rename = "weiDecimals")]
+    pub wei_decimals: u32,
+    #[serde(rename = "midPx", deserialize_with = "string_to_f64")]
+    pub mid_price: f64,
+    #[serde(rename = "markPx", deserialize_with = "string_to_f64")]
+    pub mark_price: f64,
+    #[serde(rename = "prevDayPx", deserialize_with = "string_to_f64")]
+    pub prev_day_price: f64,
+    pub genesis: Option<Genesis>,
+    pub deployer: Option<String>,
+    #[serde(rename = "deployGas", deserialize_with = "string_to_f64")]
+    pub deploy_gas: f64,
+    #[serde(rename = "deployTime")]
+    pub deploy_time: Option<String>,
+    #[serde(rename = "seededUsdc", deserialize_with = "string_to_f64")]
+    pub seeded_usdc: f64,
+    #[serde(rename = "nonCirculatingUserBalances")]
+    pub non_circulating_user_balances: Vec<(String, String)>,
+    #[serde(rename = "futureEmissions", deserialize_with = "string_to_f64")]
+    pub future_emissions: f64,
 }

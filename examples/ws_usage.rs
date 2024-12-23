@@ -1,5 +1,5 @@
 use dotenv::dotenv;
-use ethers::signers::LocalWallet;
+use ethers::signers::{LocalWallet, Signer};
 // use hyperliquid_rust_sdk::Subscription;
 use log::{info, warn};
 use rust_trading::hyperliquid::http::HttpClient;
@@ -22,6 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a LocalWallet instance from the private key
     let wallet = LocalWallet::from_str(&private_key).expect("Invalid private key");
+    let address = wallet.address();
 
     // Initialize the WebSocketManager with the mainnet URL
     let ws_manager = WebSocketManager::new(true).await;
@@ -32,8 +33,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let coin = "HYPE/USDC";
     let asset_info = http_manager.get_asset_info(coin).unwrap();
     let internal_name = asset_info.internal_name.clone();
-
-    info!("Asset info: {:#?}", asset_info);
 
     ws_manager.subscribe(Subscription::AllMids).await?;
     ws_manager
@@ -46,6 +45,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             coin: internal_name.clone(),
             interval: "1m".to_string(),
         })
+        .await?;
+
+    ws_manager
+        .subscribe(Subscription::UserFills { user: address })
         .await?;
 
     // Main loop to periodically check and log WebSocket data
@@ -102,5 +105,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Warn if there aren't enough candles to display the second to last one
             warn!("Not enough candles to display the previous one.");
         }
+
+        let user_fills = ws_manager.get_user_fills().await;
+        info!("User Fills: {}", user_fills.len());
     }
 }
