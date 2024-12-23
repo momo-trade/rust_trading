@@ -1,4 +1,4 @@
-use crate::hyperliquid::model::{CustomCandle, CustomTrade, CustomUserFills};
+use crate::hyperliquid::model::{CustomCandle, CustomL2Book, CustomTrade, CustomUserFills};
 use crate::hyperliquid::subscriptions::Subscription;
 use anyhow::{Context, Ok, Result};
 use ethers::types::H160;
@@ -20,6 +20,8 @@ pub struct WsData {
     pub max_candles: usize,
     pub user_fills: Vec<CustomUserFills>,
     pub max_fills: usize,
+    pub l2_books: Vec<CustomL2Book>,
+    pub max_l2_book: usize,
 }
 
 impl Default for WsData {
@@ -32,6 +34,8 @@ impl Default for WsData {
             max_candles: 10000, // Default limit for candles
             user_fills: Vec::new(),
             max_fills: 10000,
+            l2_books: Vec::new(),
+            max_l2_book: 100,
         }
     }
 }
@@ -59,6 +63,14 @@ impl WsData {
         if self.candles.len() > self.max_candles {
             let excess = self.candles.len() - self.max_candles;
             self.candles.drain(0..excess);
+        }
+    }
+
+    pub fn add_l2_book(&mut self, new_l2_book: CustomL2Book) {
+        self.l2_books.push(new_l2_book);
+        if self.l2_books.len() > self.max_l2_book {
+            let excess = self.l2_books.len() - self.max_l2_book;
+            self.l2_books.drain(0..excess);
         }
     }
 
@@ -197,6 +209,11 @@ impl WebSocketManager {
                             data.add_fills(custom_fills, user_fills.data.user);
                         }
                     }
+                    Message::L2Book(l2_book) => {
+                        let custom_l2_book: CustomL2Book = CustomL2Book::from(l2_book.data);
+                        let mut data = ws_data.write().await;
+                        data.add_l2_book(custom_l2_book);
+                    }
                     Message::NoData => {
                         error!("Disconnected from websocket");
                     }
@@ -226,6 +243,13 @@ impl WebSocketManager {
         ws_data.max_fills = max_fills;
         info!("Updated max user fills to {}", max_fills);
     }
+
+    pub async fn set_max_l2_book(&self, max_l2_book: usize) {
+        let mut ws_data = self.ws_data.write().await;
+        ws_data.max_l2_book = max_l2_book;
+        info!("Updated max l2 book to {}", max_l2_book);
+    }
+
     pub async fn get_all_mids(&self) -> HashMap<String, String> {
         self.ws_data.read().await.all_mids.clone()
     }
@@ -240,5 +264,9 @@ impl WebSocketManager {
 
     pub async fn get_user_fills(&self) -> Vec<CustomUserFills> {
         self.ws_data.read().await.user_fills.clone()
+    }
+
+    pub async fn get_l2_books(&self) -> Vec<CustomL2Book> {
+        self.ws_data.read().await.l2_books.clone()
     }
 }

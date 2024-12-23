@@ -155,9 +155,13 @@ async fn main() {
     match client.fetch_token_details(token_id.to_string()).await {
         Ok(token_details) => {
             info!(
-                "Token details: {}, max supply: {}",
-                token_details.name, token_details.max_supply
+                "Token details: {}, max supply: {}, total_supply: {}",
+                token_details.name, token_details.max_supply, token_details.total_supply,
             );
+
+            if let Some(genesis) = &token_details.genesis {
+                info!("holders: {}", genesis.user_balances.len())
+            }
         }
         Err(err) => {
             error!("Failed to fetch token details: {}", err);

@@ -1,6 +1,6 @@
 use super::order::{LimitOrderParams, MarketOrderParams};
 use crate::hyperliquid::model::{
-    CustomCandle, CustomOpenOrders, CustomOrderStatus, CustomTrade, CustomUserFills,
+    CustomCandle, CustomL2Book, CustomOpenOrders, CustomOrderStatus, CustomTrade, CustomUserFills,
     CustomUserTokenBalance, TokenDetails,
 };
 use anyhow::{anyhow, Context, Result};
@@ -383,6 +383,18 @@ impl HttpClient {
         let trades: Vec<CustomTrade> = response.into_iter().map(CustomTrade::from).collect();
         Ok(trades)
         // info!("Trades: {:#?}", resposne);
+    }
+
+    pub async fn fetch_l2_book(&self, coin: &str) -> Result<CustomL2Book> {
+        let response = self
+            .info
+            .l2_snapshot(coin.to_string())
+            .await
+            .context("Failed to fetch l2 book")?;
+
+        let l2_book: CustomL2Book = response.into();
+
+        Ok(l2_book)
     }
 
     pub async fn fetch_candles(

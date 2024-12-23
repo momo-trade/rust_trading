@@ -1,6 +1,7 @@
 use hyperliquid_rust_sdk::{
-    CandleData, CandlesSnapshotResponse, OpenOrdersResponse, OrderStatusResponse,
-    RecentTradesResponse, Trade, TradeInfo, UserFillsResponse, UserTokenBalance,
+    CandleData, CandlesSnapshotResponse, L2BookData, L2SnapshotResponse,
+    OpenOrdersResponse, OrderStatusResponse, RecentTradesResponse, Trade, TradeInfo,
+    UserFillsResponse, UserTokenBalance,
 };
 use serde::de::{self, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -213,6 +214,96 @@ impl From<UserFillsResponse> for CustomUserFills {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomL2Book {
+    pub coin: String,
+    // pub levels: [Vec<CustomWsLevel>; 2], // bids: levels[0], asks: levels[1]
+    pub bid_levels: Vec<CustomLevel>,
+    pub ask_levels: Vec<CustomLevel>,
+    #[serde(rename = "time")]
+    pub timestamp: u64,
+}
+
+impl From<L2SnapshotResponse> for CustomL2Book {
+    fn from(response: L2SnapshotResponse) -> Self {
+        let bid_levels = response
+            .levels
+            .first()
+            .unwrap_or(&Vec::new())
+            .iter()
+            .map(|level| CustomLevel {
+                price: level.px.parse().unwrap_or(0.0),
+                size: level.sz.parse().unwrap_or(0.0),
+                num_orders: level.n,
+            })
+            .collect();
+
+        let ask_levels = response
+            .levels
+            .get(1)
+            .unwrap_or(&Vec::new())
+            .iter()
+            .map(|level| CustomLevel {
+                price: level.px.parse().unwrap_or(0.0),
+                size: level.sz.parse().unwrap_or(0.0),
+                num_orders: level.n,
+            })
+            .collect();
+
+        CustomL2Book {
+            coin: response.coin,
+            bid_levels,
+            ask_levels,
+            timestamp: response.time,
+        }
+    }
+}
+
+impl From<L2BookData> for CustomL2Book {
+    fn from(response: L2BookData) -> Self {
+        let bid_levels = response
+            .levels
+            .first()
+            .unwrap_or(&Vec::new())
+            .iter()
+            .map(|level| CustomLevel {
+                price: level.px.parse().unwrap_or(0.0),
+                size: level.sz.parse().unwrap_or(0.0),
+                num_orders: level.n,
+            })
+            .collect();
+
+        let ask_levels = response
+            .levels
+            .get(1)
+            .unwrap_or(&Vec::new())
+            .iter()
+            .map(|level| CustomLevel {
+                price: level.px.parse().unwrap_or(0.0),
+                size: level.sz.parse().unwrap_or(0.0),
+                num_orders: level.n,
+            })
+            .collect();
+
+        CustomL2Book {
+            coin: response.coin,
+            bid_levels,
+            ask_levels,
+            timestamp: response.time,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomLevel {
+    #[serde(rename = "px", deserialize_with = "string_to_f64")]
+    pub price: f64,
+    #[serde(rename = "sz", deserialize_with = "string_to_f64")]
+    pub size: f64,
+    #[serde(rename = "n")]
+    pub num_orders: u64,
+}
+
 impl From<TradeInfo> for CustomUserFills {
     fn from(fills: TradeInfo) -> Self {
         CustomUserFills {
@@ -281,12 +372,10 @@ pub struct Genesis {
         rename = "userBalances",
         deserialize_with = "deserialize_user_balances"
     )]
-    #[allow(dead_code)]
-    user_balances: Vec<(String, f64)>,
+    pub user_balances: Vec<(String, f64)>,
 
     #[serde(rename = "existingTokenBalances")]
-    #[allow(dead_code)]
-    existing_token_balances: Option<Vec<(String, String)>>,
+    pub existing_token_balances: Option<Vec<(String, String)>>,
 }
 
 #[derive(Debug, Deserialize)]

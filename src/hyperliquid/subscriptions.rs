@@ -6,6 +6,7 @@ pub enum Subscription {
     Trades { coin: String },
     Candle { coin: String, interval: String },
     UserFills { user: H160 },
+    L2Book { coin: String },
 }
 
 impl From<Subscription> for HyperliquidSubscription {
@@ -17,6 +18,7 @@ impl From<Subscription> for HyperliquidSubscription {
                 HyperliquidSubscription::Candle { coin, interval }
             }
             Subscription::UserFills { user } => HyperliquidSubscription::UserFills { user },
+            Subscription::L2Book { coin } => HyperliquidSubscription::L2Book { coin },
         }
     }
 }

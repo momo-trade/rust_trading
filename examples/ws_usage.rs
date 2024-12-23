@@ -34,6 +34,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let asset_info = http_manager.get_asset_info(coin).unwrap();
     let internal_name = asset_info.internal_name.clone();
 
+    ws_manager
+        .subscribe(Subscription::L2Book {
+            coin: internal_name.clone(),
+        })
+        .await?;
+
     ws_manager.subscribe(Subscription::AllMids).await?;
     ws_manager
         .subscribe(Subscription::Trades {
@@ -108,5 +114,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let user_fills = ws_manager.get_user_fills().await;
         info!("User Fills: {}", user_fills.len());
+
+        let l2_books = ws_manager.get_l2_books().await;
+        if let Some(latest_l2_book) = l2_books.last() {
+            let best_bid = latest_l2_book.bid_levels.first();
+            let best_ask = latest_l2_book.ask_levels.first();
+
+            match (best_bid, best_ask) {
+                (Some(bid), Some(ask)) => {
+                    info!("Best Ask: Price = {}, Size = {}", ask.price, ask.size);
+                    info!("Best Bid: Price = {}, Size = {}", bid.price, bid.size);
+                }
+                (None, _) => info!("No bids available"),
+                (_, None) => info!("No asks available"),
+            }
+        } else {
+            info!("L2 Book data is empty");
+        }
     }
 }
