@@ -22,6 +22,8 @@ pub struct WsData {
     pub max_fills: usize,
     pub l2_books: Vec<CustomL2Book>,
     pub max_l2_book: usize,
+    pub best_bid: f64,
+    pub best_ask: f64,
 }
 
 impl Default for WsData {
@@ -36,6 +38,8 @@ impl Default for WsData {
             max_fills: 10000,
             l2_books: Vec::new(),
             max_l2_book: 100,
+            best_bid: 0.0,
+            best_ask: 0.0,
         }
     }
 }
@@ -71,6 +75,17 @@ impl WsData {
         if self.l2_books.len() > self.max_l2_book {
             let excess = self.l2_books.len() - self.max_l2_book;
             self.l2_books.drain(0..excess);
+        }
+
+        if let Some(latest_l2_book) = self.l2_books.last() {
+            self.best_bid = latest_l2_book
+                .bid_levels
+                .first()
+                .map_or(0.0, |bid| bid.price);
+            self.best_ask = latest_l2_book
+                .ask_levels
+                .first()
+                .map_or(0.0, |ask| ask.price);
         }
     }
 
@@ -268,5 +283,13 @@ impl WebSocketManager {
 
     pub async fn get_l2_books(&self) -> Vec<CustomL2Book> {
         self.ws_data.read().await.l2_books.clone()
+    }
+
+    pub async fn get_best_bid(&self) -> f64 {
+        self.ws_data.read().await.best_bid
+    }
+
+    pub async fn get_best_ask(&self) -> f64 {
+        self.ws_data.read().await.best_ask
     }
 }

@@ -115,21 +115,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let user_fills = ws_manager.get_user_fills().await;
         info!("User Fills: {}", user_fills.len());
 
-        let l2_books = ws_manager.get_l2_books().await;
-        if let Some(latest_l2_book) = l2_books.last() {
-            let best_bid = latest_l2_book.bid_levels.first();
-            let best_ask = latest_l2_book.ask_levels.first();
+        // let l2_books = ws_manager.get_l2_books().await;
+        // info!("L2 Books Size: {}", l2_books.len());
+        // if let Some(latest_l2_book) = l2_books.last() {
+        //     info!("Board Size: {}", latest_l2_book.bid_levels.len());
+        //     let best_bid = latest_l2_book.bid_levels.first();
+        //     let best_ask = latest_l2_book.ask_levels.first();
 
-            match (best_bid, best_ask) {
-                (Some(bid), Some(ask)) => {
-                    info!("Best Ask: Price = {}, Size = {}", ask.price, ask.size);
-                    info!("Best Bid: Price = {}, Size = {}", bid.price, bid.size);
-                }
-                (None, _) => info!("No bids available"),
-                (_, None) => info!("No asks available"),
-            }
-        } else {
-            info!("L2 Book data is empty");
-        }
+        //     match (best_bid, best_ask) {
+        //         (Some(bid), Some(ask)) => {
+        //             info!("Best Ask: Price = {}, Size = {}", ask.price, ask.size);
+        //             info!("Best Bid: Price = {}, Size = {}", bid.price, bid.size);
+        //         }
+        //         (None, _) => info!("No bids available"),
+        //         (_, None) => info!("No asks available"),
+        //     }
+        // } else {
+        //     info!("L2 Book data is empty");
+        // }
+
+        let best_bid = ws_manager.get_best_bid().await;
+        let best_ask = ws_manager.get_best_ask().await;
+        info!("Best Ask: {}", best_ask);
+        info!("Best Bid: {}", best_bid);
     }
 }
