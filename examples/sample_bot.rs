@@ -45,7 +45,7 @@ impl BotFramework for SampleBot {
         let best_bid = ws_manager.get_best_bid().await;
         let best_ask = ws_manager.get_best_ask().await;
 
-        info!("Best bid: {}, best ask: {}", best_bid, best_ask);
+        info!("Best bid: {:.3}, best ask: {:.3}", best_bid, best_ask);
         Ok(())
     }
 }
