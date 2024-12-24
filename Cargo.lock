@@ -3080,6 +3080,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-tungstenite 0.24.0",
+ "toml",
  "uuid 1.11.0",
 ]
 

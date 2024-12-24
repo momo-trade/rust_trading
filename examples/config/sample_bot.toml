@@ -1,0 +1,7 @@
+wallet_secret = "your_wallet_secret"
+is_mainnet = true
+coin = "@107"                        # HYPE/USDC(SPOT)
+interval = 5                         # Loop interval in seconds
+
+[bot_specific] # Bot specific settings
+threshold = 0.01
