@@ -105,25 +105,9 @@ impl WsData {
             if let Err(e) = save_fills_to_db(db_client, &fills, user).await {
                 error!("Failed to save fills to database: {}", e);
             }
-        } else {
-            info!("No database client found, saving fills to file");
-            if let Err(e) = self.append_fills_to_file(fills, user) {
-                error!("Failed to append fills to file: {}", e);
-            }
+        } else if let Err(e) = self.append_fills_to_file(fills, user) {
+            error!("Failed to append fills to file: {}", e);
         }
-        // if let Some(db_client) = &self.db_client {
-        //     match save_fills_to_db(db_client, &fills, user).await {
-        //         Ok(_) => info!("Successfully saved fills to database"),
-        //         Err(e) => {
-        //             error!("Failed to save fills to database: {}", e);
-        //             if let Err(e) = self.append_fills_to_file(fills, user) {
-        //                 error!("Failed to append fills to file: {}", e);
-        //             }
-        //         }
-        //     }
-        // } else if let Err(e) = self.append_fills_to_file(fills, user) {
-        //     error!("Failed to append fills to file: {}", e);
-        // }
     }
 
     fn append_fills_to_file(&self, fills: Vec<CustomUserFills>, user: H160) -> Result<()> {
