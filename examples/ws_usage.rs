@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address = wallet.address();
 
     // Initialize the WebSocketManager with the mainnet URL
-    let ws_manager = WebSocketManager::new(true).await;
+    let ws_manager = WebSocketManager::new(true, None).await;
     let http_manager = HttpClient::new(true, wallet).await.unwrap();
     // Set the maximum number of trades to store
     ws_manager.set_max_trades(200).await;

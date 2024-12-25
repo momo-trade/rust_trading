@@ -1,6 +1,7 @@
+use crate::hyperliquid::db::save_fills_to_db;
 use crate::hyperliquid::model::{CustomCandle, CustomL2Book, CustomTrade, CustomUserFills};
 use crate::hyperliquid::subscriptions::Subscription;
-use anyhow::{Context, Ok, Result};
+use anyhow::{Context, Result};
 use ethers::types::H160;
 use hyperliquid_rust_sdk::{BaseUrl, InfoClient, Message, Subscription as HyperliquidSubscription};
 use log::{error, info};
@@ -10,6 +11,7 @@ use std::io::Write;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::{mpsc::UnboundedSender, RwLock};
+use tokio_postgres::Client;
 
 #[derive(Clone, Debug)]
 pub struct WsData {
@@ -24,6 +26,7 @@ pub struct WsData {
     pub max_l2_book: usize,
     pub best_bid: f64,
     pub best_ask: f64,
+    pub db_client: Option<Arc<Client>>,
 }
 
 impl Default for WsData {
@@ -40,6 +43,7 @@ impl Default for WsData {
             max_l2_book: 100,
             best_bid: 0.0,
             best_ask: 0.0,
+            db_client: None,
         }
     }
 }
@@ -89,7 +93,7 @@ impl WsData {
         }
     }
 
-    pub fn add_fills(&mut self, fills: Vec<CustomUserFills>, user: H160) {
+    pub async fn add_fills(&mut self, fills: Vec<CustomUserFills>, user: H160) {
         self.user_fills.extend(fills.clone());
 
         if self.user_fills.len() > self.max_fills {
@@ -97,9 +101,29 @@ impl WsData {
             self.user_fills.drain(0..excess);
         }
 
-        if let Err(e) = self.append_fills_to_file(fills, user) {
-            error!("Failed to append fills to file: {}", e);
+        if let Some(db_client) = &self.db_client {
+            if let Err(e) = save_fills_to_db(db_client, &fills, user).await {
+                error!("Failed to save fills to database: {}", e);
+            }
+        } else {
+            info!("No database client found, saving fills to file");
+            if let Err(e) = self.append_fills_to_file(fills, user) {
+                error!("Failed to append fills to file: {}", e);
+            }
         }
+        // if let Some(db_client) = &self.db_client {
+        //     match save_fills_to_db(db_client, &fills, user).await {
+        //         Ok(_) => info!("Successfully saved fills to database"),
+        //         Err(e) => {
+        //             error!("Failed to save fills to database: {}", e);
+        //             if let Err(e) = self.append_fills_to_file(fills, user) {
+        //                 error!("Failed to append fills to file: {}", e);
+        //             }
+        //         }
+        //     }
+        // } else if let Err(e) = self.append_fills_to_file(fills, user) {
+        //     error!("Failed to append fills to file: {}", e);
+        // }
     }
 
     fn append_fills_to_file(&self, fills: Vec<CustomUserFills>, user: H160) -> Result<()> {
@@ -127,7 +151,7 @@ pub struct WebSocketManager {
 }
 
 impl WebSocketManager {
-    pub async fn new(is_mainnet: bool) -> Arc<Self> {
+    pub async fn new(is_mainnet: bool, db_client: Option<Arc<Client>>) -> Arc<Self> {
         let base_url = if is_mainnet {
             BaseUrl::Mainnet
         } else {
@@ -143,7 +167,10 @@ impl WebSocketManager {
         Arc::new(Self {
             info_client,
             subscription: Arc::new(RwLock::new(HashMap::new())),
-            ws_data: Arc::new(RwLock::new(WsData::default())),
+            ws_data: Arc::new(RwLock::new(WsData {
+                db_client,
+                ..WsData::default()
+            })),
         })
     }
 
@@ -221,7 +248,7 @@ impl WebSocketManager {
                                 .collect();
 
                             let mut data = ws_data.write().await;
-                            data.add_fills(custom_fills, user_fills.data.user);
+                            data.add_fills(custom_fills, user_fills.data.user).await;
                         }
                     }
                     Message::L2Book(l2_book) => {

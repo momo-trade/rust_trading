@@ -186,12 +186,12 @@ pub struct CustomUserFills {
     pub crossed: bool,
     pub dir: String,
     pub hash: String,
-    pub order_id: u64,
+    pub order_id: i64,
     pub price: f64,
     pub side: String,
     pub start_position: f64,
     pub size: f64,
-    pub timestamp: u64,
+    pub timestamp: i64,
     pub fee: f64,
 }
 
@@ -203,12 +203,12 @@ impl From<UserFillsResponse> for CustomUserFills {
             crossed: fills.crossed,
             dir: fills.dir,
             hash: fills.hash,
-            order_id: fills.oid,
+            order_id: fills.oid as i64,
             price: fills.px.parse().unwrap_or(0.0), // Convert the "price" field from string to f64
             side: fills.side,
             start_position: fills.start_position.parse().unwrap_or(0.0), // Convert the "start_position" field from string to f64
             size: fills.sz.parse().unwrap_or(0.0), // Convert the "size" field from string to f64
-            timestamp: fills.time,
+            timestamp: fills.time as i64,
             fee: fills.fee.parse().unwrap_or(0.0), // Convert the "fee" field from string to f64
         }
     }
@@ -312,12 +312,12 @@ impl From<TradeInfo> for CustomUserFills {
             crossed: fills.crossed,
             dir: fills.dir,
             hash: fills.hash,
-            order_id: fills.oid,
+            order_id: fills.oid as i64,
             price: fills.px.parse().unwrap_or(0.0), // Convert the "price" field from string to f64
             side: fills.side,
             start_position: fills.start_position.parse().unwrap_or(0.0), // Convert the "start_position" field from string to f64
             size: fills.sz.parse().unwrap_or(0.0), // Convert the "size" field from string to f64
-            timestamp: fills.time,
+            timestamp: fills.time as i64,
             fee: fills.fee.parse().unwrap_or(0.0), // Convert the "fee" field from string to f64
         }
     }

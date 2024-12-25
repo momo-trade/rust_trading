@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::fs;
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio_postgres::{Client, NoTls};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -14,6 +15,7 @@ pub struct Config {
     pub is_mainnet: bool,
     pub coin: String,
     pub interval: u64,
+    pub database_url: Option<String>,
     #[serde(default)] // User empty object if bot_specific is missing
     pub bot_specific: Value, // Bot-specific configuration
 }
@@ -23,6 +25,7 @@ pub struct InitResources {
     pub http_client: HttpClient,
     pub wallet: LocalWallet,
     pub config: Config,
+    pub db_client: Option<Arc<Client>>,
 }
 
 pub async fn initialize_bot(config_path: &str) -> Result<InitResources> {
@@ -35,7 +38,20 @@ pub async fn initialize_bot(config_path: &str) -> Result<InitResources> {
     // let private_key = env::var("WALLET_SECRET").expect("WALLET_SECRET not set");
     let wallet = LocalWallet::from_str(&config.wallet_secret).context("Invalid wallet secret")?;
 
-    let ws_manager = WebSocketManager::new(config.is_mainnet).await;
+    // Initialize database connection if database_url is provided
+    let db_client = if let Some(database_url) = &config.database_url {
+        let (client, connection) = tokio_postgres::connect(database_url, NoTls).await?;
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                eprintln!("Connection error: {}", e);
+            }
+        });
+        Some(Arc::new(client))
+    } else {
+        None
+    };
+
+    let ws_manager = WebSocketManager::new(config.is_mainnet, db_client.clone()).await;
     let http_client = HttpClient::new(config.is_mainnet, wallet.clone()).await?;
 
     Ok(InitResources {
@@ -43,5 +59,6 @@ pub async fn initialize_bot(config_path: &str) -> Result<InitResources> {
         http_client,
         wallet,
         config,
+        db_client,
     })
 }

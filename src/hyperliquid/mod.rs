@@ -4,3 +4,4 @@ pub mod order;
 pub mod portfolio;
 pub mod subscriptions;
 pub mod websocket;
+pub mod db;

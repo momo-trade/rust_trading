@@ -1,4 +1,5 @@
 use anyhow::Result;
+use ethers::signers::Signer;
 use log::info;
 use rust_trading::bot_framework::framework::{run_bot, BotFramework};
 use rust_trading::bot_framework::init::InitResources;
@@ -15,6 +16,11 @@ impl BotFramework for SampleBot {
         ws_manager
             .subscribe(Subscription::L2Book {
                 coin: config.coin.clone(),
+            })
+            .await?;
+        ws_manager
+            .subscribe(Subscription::UserFills {
+                user: resources.wallet.address(),
             })
             .await?;
         info!("Subscribed to L2Book for {}", config.coin);
@@ -35,6 +41,9 @@ impl BotFramework for SampleBot {
         let ws_manager = &resources.ws_manager;
         let best_bid = ws_manager.get_best_bid().await;
         let best_ask = ws_manager.get_best_ask().await;
+
+        let user_fills = ws_manager.get_user_fills().await;
+        info!("User fills: {}", user_fills.len());
 
         info!("Best bid: {:.3}, best ask: {:.3}", best_bid, best_ask);
         Ok(())
