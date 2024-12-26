@@ -1,7 +1,8 @@
 use crate::hyperliquid::http::HttpClient;
+use crate::hyperliquid::subscriptions::Subscription;
 use crate::hyperliquid::websocket::WebSocketManager;
 use anyhow::{Context, Result};
-use ethers::signers::LocalWallet;
+use ethers::signers::{LocalWallet, Signer};
 use serde::Deserialize;
 use serde_json::Value;
 use std::fs;
@@ -52,6 +53,25 @@ pub async fn initialize_bot(config_path: &str) -> Result<InitResources> {
     };
 
     let ws_manager = WebSocketManager::new(config.is_mainnet, db_client.clone()).await;
+
+    // Subscribe to necessary data
+    ws_manager.subscribe(Subscription::AllMids).await?;
+    ws_manager
+        .subscribe(Subscription::Trades {
+            coin: config.coin.clone(),
+        })
+        .await?;
+    ws_manager
+        .subscribe(Subscription::L2Book {
+            coin: config.coin.clone(),
+        })
+        .await?;
+    ws_manager
+        .subscribe(Subscription::UserFills {
+            user: wallet.address(),
+        })
+        .await?;
+
     let http_client = HttpClient::new(config.is_mainnet, wallet.clone()).await?;
 
     Ok(InitResources {

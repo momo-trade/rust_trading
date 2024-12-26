@@ -1,7 +1,8 @@
-wallet_secret = "your_wallet_secret"                                               # Wallet secret
+wallet_secret = "your secret key" # Wallet secret
 is_mainnet = true
-coin = "@107"                                                                      # HYPE/USDC(SPOT)
-interval = 5                                                                       # Loop interval in seconds
+coin = "@107"                     # HYPE/USDC(SPOT)
+interval = 5                      # Loop interval in seconds
 database_url = "postgres://username:password@localhost/db_name"        # (Optional)Database URL
-[bot_specific] # Bot specific settings
+
+[bot_specific] # (Optional)Bot specific settings
 threshold = 0.01

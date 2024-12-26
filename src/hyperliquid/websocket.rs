@@ -1,5 +1,6 @@
 use crate::hyperliquid::db::save_fills_to_db;
 use crate::hyperliquid::model::{CustomCandle, CustomL2Book, CustomTrade, CustomUserFills};
+use crate::hyperliquid::portfolio::{PortfolioManager, Position};
 use crate::hyperliquid::subscriptions::Subscription;
 use anyhow::{Context, Result};
 use ethers::types::H160;
@@ -27,6 +28,7 @@ pub struct WsData {
     pub best_bid: f64,
     pub best_ask: f64,
     pub db_client: Option<Arc<Client>>,
+    pub portfolio_manager: PortfolioManager,
 }
 
 impl Default for WsData {
@@ -44,6 +46,7 @@ impl Default for WsData {
             best_bid: 0.0,
             best_ask: 0.0,
             db_client: None,
+            portfolio_manager: PortfolioManager::new(),
         }
     }
 }
@@ -99,6 +102,14 @@ impl WsData {
         if self.user_fills.len() > self.max_fills {
             let excess = self.user_fills.len() - self.max_fills;
             self.user_fills.drain(0..excess);
+        }
+
+        for fill in &fills {
+            let mid_price = self
+                .all_mids
+                .get(&fill.coin)
+                .map_or(0.0, |price| price.parse::<f64>().unwrap_or(0.0));
+            self.portfolio_manager.update_position(fill, mid_price);
         }
 
         if let Some(db_client) = &self.db_client {
@@ -302,5 +313,22 @@ impl WebSocketManager {
 
     pub async fn get_best_ask(&self) -> f64 {
         self.ws_data.read().await.best_ask
+    }
+
+    pub async fn get_position(&self, coin: &str) -> Option<Position> {
+        self.ws_data
+            .read()
+            .await
+            .portfolio_manager
+            .get_position(coin)
+            .cloned()
+    }
+
+    pub async fn get_unrealized_pnl(&self, coin: &str) -> f64 {
+        self.ws_data
+            .read()
+            .await
+            .portfolio_manager
+            .get_unrealized_pnl(coin)
     }
 }

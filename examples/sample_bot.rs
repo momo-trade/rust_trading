@@ -46,6 +46,19 @@ impl BotFramework for SampleBot {
         info!("User fills: {}", user_fills.len());
 
         info!("Best bid: {:.3}, best ask: {:.3}", best_bid, best_ask);
+
+        match ws_manager.get_position(&config.coin).await {
+            Some(position) => {
+                info!(
+                    "Position => coin: {}, amount: {}, avg_price: {}, realized_pnl: {}, unrealized_pnl: {}",
+                    position.coin, position.amount, position.average_price, position.pnl.realized, position.pnl.unrealized
+                );
+            }
+            None => {
+                info!("No position for {}", config.coin);
+            }
+        }
+
         Ok(())
     }
 }
