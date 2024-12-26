@@ -1,6 +1,6 @@
 wallet_secret = "your secret key" # Wallet secret
 is_mainnet = true
-coin = "@107"                     # HYPE/USDC(SPOT)
+coin = "HYPE/USDC"                     # @107(SPOT)
 interval = 5                      # Loop interval in seconds
 database_url = "postgres://username:password@localhost/db_name"        # (Optional)Database URL
 

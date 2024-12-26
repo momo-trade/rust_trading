@@ -52,18 +52,21 @@ pub async fn initialize_bot(config_path: &str) -> Result<InitResources> {
         None
     };
 
+    let http_client = HttpClient::new(config.is_mainnet, wallet.clone()).await?;
+    let asset_info = http_client.get_asset_info(&config.coin).unwrap();
+
     let ws_manager = WebSocketManager::new(config.is_mainnet, db_client.clone()).await;
 
     // Subscribe to necessary data
     ws_manager.subscribe(Subscription::AllMids).await?;
     ws_manager
         .subscribe(Subscription::Trades {
-            coin: config.coin.clone(),
+            coin: asset_info.internal_name.clone(),
         })
         .await?;
     ws_manager
         .subscribe(Subscription::L2Book {
-            coin: config.coin.clone(),
+            coin: asset_info.internal_name.clone(),
         })
         .await?;
     ws_manager
@@ -71,8 +74,6 @@ pub async fn initialize_bot(config_path: &str) -> Result<InitResources> {
             user: wallet.address(),
         })
         .await?;
-
-    let http_client = HttpClient::new(config.is_mainnet, wallet.clone()).await?;
 
     Ok(InitResources {
         ws_manager,
