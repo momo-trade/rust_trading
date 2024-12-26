@@ -105,11 +105,7 @@ impl WsData {
         }
 
         for fill in &fills {
-            let mid_price = self
-                .all_mids
-                .get(&fill.coin)
-                .map_or(0.0, |price| price.parse::<f64>().unwrap_or(0.0));
-            self.portfolio_manager.update_position(fill, mid_price);
+            self.portfolio_manager.update_position(fill);
         }
 
         if let Some(db_client) = &self.db_client {
@@ -325,10 +321,15 @@ impl WebSocketManager {
     }
 
     pub async fn get_unrealized_pnl(&self, coin: &str) -> f64 {
+        let current_price = self
+            .get_all_mids()
+            .await
+            .get(coin)
+            .map_or(0.0, |price| price.parse::<f64>().unwrap_or(0.0));
         self.ws_data
             .read()
             .await
             .portfolio_manager
-            .get_unrealized_pnl(coin)
+            .get_unrealized_pnl(coin, current_price)
     }
 }

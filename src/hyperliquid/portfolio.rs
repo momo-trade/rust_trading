@@ -30,7 +30,7 @@ impl PortfolioManager {
         }
     }
 
-    pub fn update_position(&mut self, fill: &CustomUserFills, current_price: f64) {
+    pub fn update_position(&mut self, fill: &CustomUserFills) {
         let position = self.positions.entry(fill.coin.clone()).or_insert(Position {
             coin: fill.coin.clone(),
             amount: 0.0,
@@ -79,14 +79,13 @@ impl PortfolioManager {
             position.pnl.fee_in_usdc += fill.fee; // Fee in USDC for sell
             position.pnl.realized -= fill.fee; // Subtract fee from realized PnL
         }
-
-        // Update unrealized PnL
-        position.pnl.unrealized = (current_price - position.average_price) * position.amount;
     }
 
-    pub fn get_unrealized_pnl(&self, coin: &str) -> f64 {
+    pub fn get_unrealized_pnl(&self, coin: &str, current_price: f64) -> f64 {
         if let Some(position) = self.positions.get(coin) {
-            return position.pnl.unrealized;
+            if position.amount != 0.0 {
+                return (current_price - position.average_price) * position.amount;
+            }
         }
         0.0
     }
