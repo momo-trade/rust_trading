@@ -1,7 +1,7 @@
 use hyperliquid_rust_sdk::{
-    CandleData, CandlesSnapshotResponse, L2BookData, L2SnapshotResponse,
-    OpenOrdersResponse, OrderStatusResponse, RecentTradesResponse, Trade, TradeInfo,
-    UserFillsResponse, UserTokenBalance,
+    CandleData, CandlesSnapshotResponse, L2BookData, L2SnapshotResponse, OpenOrdersResponse,
+    OrderStatusResponse, RecentTradesResponse, Trade, TradeInfo, UserFillsResponse,
+    UserTokenBalance,
 };
 use serde::de::{self, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -114,7 +114,7 @@ impl From<OpenOrdersResponse> for CustomOpenOrders {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CustomUserTokenBalance {
     pub coin: String,
     pub hold: f64,

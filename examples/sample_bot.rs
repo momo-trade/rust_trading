@@ -49,9 +49,10 @@ impl BotFramework for SampleBot {
 
         match ws_manager.get_position(&config.coin).await {
             Some(position) => {
+                let unrealized_pnl = ws_manager.get_unrealized_pnl(&config.coin).await;
                 info!(
                     "Position => coin: {}, amount: {}, avg_price: {}, realized_pnl: {}, unrealized_pnl: {}",
-                    position.coin, position.amount, position.average_price, position.pnl.realized, position.pnl.unrealized
+                    position.coin, position.amount, position.average_price, position.pnl.realized, unrealized_pnl
                 );
             }
             None => {
