@@ -377,4 +377,14 @@ impl WebSocketManager {
             .portfolio_manager
             .get_unrealized_pnl(coin, current_price)
     }
+
+    pub async fn get_thickness(&self) -> (f64, f64) {
+        let ws_data = self.ws_data.read().await;
+        ws_data.calculate_thickness()
+    }
+
+    pub async fn get_average_thickness(&self) -> (f64, f64) {
+        let ws_data = self.ws_data.read().await;
+        ws_data.calculate_average_thickness()
+    }
 }
