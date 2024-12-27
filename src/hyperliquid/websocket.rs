@@ -133,6 +133,51 @@ impl WsData {
 
         Ok(())
     }
+
+    pub fn calculate_thickness(&self) -> (f64, f64) {
+        let mut bid_thickness = 0.0;
+        let mut ask_thickness = 0.0;
+
+        if let Some(latest_book) = self.l2_books.last() {
+            for bid in &latest_book.bid_levels {
+                bid_thickness += bid.size;
+            }
+            for ask in &latest_book.ask_levels {
+                ask_thickness += ask.size;
+            }
+        }
+
+        (bid_thickness, ask_thickness)
+    }
+
+    pub fn calculate_average_thickness(&self) -> (f64, f64) {
+        let mut total_bid_thickness = 0.0;
+        let mut total_ask_thickness = 0.0;
+        let count = self.l2_books.len() as f64;
+
+        for book in &self.l2_books {
+            for bid in &book.bid_levels {
+                total_bid_thickness += bid.size;
+            }
+            for ask in &book.ask_levels {
+                total_ask_thickness += ask.size;
+            }
+        }
+
+        let average_bid_thickness = if count > 0.0 {
+            total_bid_thickness / count
+        } else {
+            0.0
+        };
+
+        let average_ask_thickness = if count > 0.0 {
+            total_ask_thickness / count
+        } else {
+            0.0
+        };
+
+        (average_bid_thickness, average_ask_thickness)
+    }
 }
 
 pub struct WebSocketManager {
