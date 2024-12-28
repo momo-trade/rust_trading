@@ -5,8 +5,45 @@ use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
 use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
 use log4rs::append::rolling_file::RollingFileAppender;
 use log4rs::config::{Appender, Config, Root};
-use log4rs::encode::pattern::PatternEncoder;
+use log4rs::encode::{Encode, Write};
+// use log4rs::encode::pattern::PatternEncoder;
 use std::env;
+// use std::error::Error;
+// use std::fmt;
+use anyhow::Result;
+
+#[derive(Debug)]
+struct CustomEncoder {
+    pattern: String,
+}
+
+impl CustomEncoder {
+    fn new(pattern: &str) -> Self {
+        CustomEncoder {
+            pattern: pattern.to_string(),
+        }
+    }
+}
+
+impl Encode for CustomEncoder {
+    fn encode(&self, w: &mut dyn Write, record: &log::Record) -> Result<()> {
+        let file_name = record.file().map(|path| {
+            path.rsplit('/').next().unwrap_or(path)
+        }).unwrap_or("unknown");
+
+        let module_path = record.module_path().unwrap_or("unknown");
+
+        let mut output = self.pattern.clone();
+        output = output.replace("{file_name}", file_name);
+        output = output.replace("{module_path}", module_path);
+        output = output.replace("{message}", &record.args().to_string());
+        output = output.replace("{level}", &record.level().to_string());
+        output = output.replace("{time}", &chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f").to_string());
+
+        w.write_all(output.as_bytes())?;
+        Ok(())
+    }
+}
 
 pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let log_level = match env::var("LOG_LEVEL")
@@ -21,7 +58,6 @@ pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Erro
         _ => LevelFilter::Info,
     };
 
-    // ファイルローテーションの設定
     let size_limit = 5 * 1024 * 1024;
     let pattern = format!("{}.{{}}.gz", log_file_path);
 
@@ -31,14 +67,14 @@ pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Erro
     );
 
     let logfile = RollingFileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new(
-            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{file_name:15.15}:{line:3.3}] {m}{n}",
+        .encoder(Box::new(CustomEncoder::new(
+            "[{time} {level}][{file_name}:{line}] {message}\n",
         )))
         .build(log_file_path, Box::new(policy))?;
 
     let stdout = ConsoleAppender::builder()
-        .encoder(Box::new(PatternEncoder::new(
-            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{file_name:15.15}:{line:3.3}] {m}{n}",
+        .encoder(Box::new(CustomEncoder::new(
+            "[{time} {level}][{file_name}:{line}] {message}\n",
         )))
         .build();
 
