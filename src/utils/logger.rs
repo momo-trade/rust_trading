@@ -86,7 +86,7 @@ pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Erro
     // 標準出力用のAppender
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
-            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{M}:{L}] {m}{n}",
+            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{M:15.15}:{line:3.3}] {m}{n}",
         )))
         .build();
 
