@@ -6,10 +6,7 @@ use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
 use log4rs::append::rolling_file::RollingFileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::{Encode, Write};
-// use log4rs::encode::pattern::PatternEncoder;
 use std::env;
-// use std::error::Error;
-// use std::fmt;
 use anyhow::Result;
 
 #[derive(Debug)]
@@ -28,16 +25,19 @@ impl CustomEncoder {
 impl Encode for CustomEncoder {
     fn encode(&self, w: &mut dyn Write, record: &log::Record) -> Result<()> {
         let file_name = record.file().map(|path| {
-            path.rsplit('/').next().unwrap_or(path)
-        }).unwrap_or("unknown");
+            let file = path.rsplit('/').next().unwrap_or(path);
+            format!("{:<15.15}", file)
+        }).unwrap_or_else(|| format!("{:<15.15}", "unknown"));
 
         let module_path = record.module_path().unwrap_or("unknown");
+        let line = record.line().map_or("unknown".to_string(), |line| format!("{:>3}", line));
 
         let mut output = self.pattern.clone();
-        output = output.replace("{file_name}", file_name);
+        output = output.replace("{file_name}", &file_name);
         output = output.replace("{module_path}", module_path);
+        output = output.replace("{line}", &line);
         output = output.replace("{message}", &record.args().to_string());
-        output = output.replace("{level}", &record.level().to_string());
+        output = output.replace("{level}", &format!("{:<5}", record.level().to_string()));
         output = output.replace("{time}", &chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f").to_string());
 
         w.write_all(output.as_bytes())?;
