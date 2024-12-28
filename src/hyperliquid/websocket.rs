@@ -178,6 +178,37 @@ impl WsData {
 
         (average_bid_thickness, average_ask_thickness)
     }
+
+    pub fn calculate_thickness_near_best(&self, tick_size: f64, tick_range: usize) -> (f64, f64) {
+        let mut bid_thickness = 0.0;
+        let mut ask_thickness = 0.0;
+
+        if let Some(latest_book) = self.l2_books.last() {
+            if let Some(best_bid) = latest_book.bid_levels.first() {
+                let bid_min = best_bid.price - (tick_size * tick_range as f64);
+                let bid_max = best_bid.price;
+
+                for bid in &latest_book.bid_levels {
+                    if bid.price >= bid_min && bid.price <= bid_max {
+                        bid_thickness += bid.size;
+                    }
+                }
+            }
+
+            if let Some(best_ask) = latest_book.ask_levels.first() {
+                let ask_min = best_ask.price;
+                let ask_max = best_ask.price + (tick_size * tick_range as f64);
+
+                for ask in &latest_book.ask_levels {
+                    if ask.price >= ask_min && ask.price <= ask_max {
+                        ask_thickness += ask.size;
+                    }
+                }
+            }
+        }
+
+        (bid_thickness, ask_thickness)
+    }
 }
 
 pub struct WebSocketManager {
@@ -386,5 +417,10 @@ impl WebSocketManager {
     pub async fn get_average_thickness(&self) -> (f64, f64) {
         let ws_data = self.ws_data.read().await;
         ws_data.calculate_average_thickness()
+    }
+
+    pub async fn get_tickness_near_best(&self, tick_size: f64, tick_range: usize) -> (f64, f64) {
+        let ws_data = self.ws_data.read().await;
+        ws_data.calculate_thickness_near_best(tick_size, tick_range)
     }
 }
