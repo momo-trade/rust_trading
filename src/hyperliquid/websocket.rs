@@ -419,7 +419,7 @@ impl WebSocketManager {
         ws_data.calculate_average_thickness()
     }
 
-    pub async fn get_tickness_near_best(&self, tick_size: f64, tick_range: usize) -> (f64, f64) {
+    pub async fn get_thickness_near_best(&self, tick_size: f64, tick_range: usize) -> (f64, f64) {
         let ws_data = self.ws_data.read().await;
         ws_data.calculate_thickness_near_best(tick_size, tick_range)
     }
