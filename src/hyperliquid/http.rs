@@ -250,7 +250,6 @@ impl HttpClient {
 
                     if success {
                         let success_msg = "Order cancelled successfully".to_string();
-                        info!("{}", success_msg);
                         return Ok(success_msg);
                     }
                 }
@@ -280,7 +279,6 @@ impl HttpClient {
 
                     if success {
                         let success_msg = "Order cancelled successfully".to_string();
-                        info!("{}", success_msg);
                         return Ok(success_msg);
                     }
                 }
