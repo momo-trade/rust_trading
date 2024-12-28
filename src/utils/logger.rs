@@ -32,15 +32,13 @@ pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Erro
 
     let logfile = RollingFileAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
-            // "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{file:35.35}:{line:3.3}] {m}{n}",
-            "[{d(%Y-%m-%dT%H:%M:%S.%3f} {h({l:5.5})}][{file_name:15.15}:{line:3.3}] {m}{n}",
+            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{file_name:15.15}:{line:3.3}] {m}{n}",
         )))
         .build(log_file_path, Box::new(policy))?;
 
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
-            // "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{file:35.35}:{line:3.3}] {m}{n}",
-            "[{d(%Y-%m-%dT%H:%M:%S.%3f} {h({l:5.5})}][{file_name:15.15}:{line:3.3}] {m}{n}",
+            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{file_name:15.15}:{line:3.3}] {m}{n}",
         )))
         .build();
 
