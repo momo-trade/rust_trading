@@ -30,9 +30,6 @@ pub struct InitResources {
 }
 
 pub async fn initialize_bot(config_path: &str) -> Result<InitResources> {
-    // dotenv::dotenv().ok();
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
     let config_content = fs::read_to_string(config_path).context("Failed to read config file")?;
     let config: Config = toml::from_str(&config_content).context("Failed to parse config file")?;
 

@@ -4,14 +4,14 @@ use crate::hyperliquid::model::{
     CustomUserTokenBalance, TokenDetails,
 };
 use anyhow::{anyhow, Context, Result};
+use ethers::signers::LocalWallet;
 use ethers::types::H160;
-use ethers::{signers::LocalWallet, types::transaction::request};
 use hyperliquid_rust_sdk::{
     BaseUrl, ClientCancelRequest, ClientCancelRequestCloid, ClientLimit, ClientOrder,
     ClientOrderRequest, ExchangeClient, ExchangeDataStatus, ExchangeResponseStatus,
     FundingHistoryResponse, InfoClient, UserFundingResponse, UserStateResponse,
 };
-use log::{debug, error, info};
+use log::{debug, error};
 use std::collections::HashMap;
 use uuid::Uuid;
 
