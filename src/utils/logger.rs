@@ -7,53 +7,7 @@ use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
 use log4rs::append::rolling_file::RollingFileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
-use log4rs::encode::{Encode, Write};
 use std::env;
-
-#[derive(Debug)]
-struct CustomEncoder {
-    pattern: String,
-}
-
-impl CustomEncoder {
-    fn new(pattern: &str) -> Self {
-        CustomEncoder {
-            pattern: pattern.to_string(),
-        }
-    }
-}
-
-impl Encode for CustomEncoder {
-    fn encode(&self, w: &mut dyn Write, record: &log::Record) -> Result<()> {
-        let file_name = record
-            .file()
-            .map(|path| {
-                // フルパスからファイル名を抽出し、15文字固定（左寄せ）
-                let file = path.rsplit('/').next().unwrap_or(path);
-                format!("{:<15.15}", file)
-            })
-            .unwrap_or_else(|| format!("{:<15.15}", "unknown"));
-
-        let line = record
-            .line()
-            .map_or("   ".to_string(), |line| format!("{:>3}", line)); // 3桁固定（右寄せ）
-
-        let mut output = self.pattern.clone();
-        output = output.replace("{file_name}", &file_name);
-        output = output.replace("{line}", &line);
-        output = output.replace("{message}", &record.args().to_string());
-        output = output.replace("{level}", &format!("{:<5}", record.level().to_string()));
-        output = output.replace(
-            "{time}",
-            &chrono::Local::now()
-                .format("%Y-%m-%dT%H:%M:%S%.3f")
-                .to_string(),
-        );
-
-        w.write_all(output.as_bytes())?;
-        Ok(())
-    }
-}
 
 pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let log_level = match env::var("LOG_LEVEL")
@@ -78,15 +32,15 @@ pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Erro
 
     // ログファイル用のAppender
     let logfile = RollingFileAppender::builder()
-        .encoder(Box::new(CustomEncoder::new(
-            "[{time} {level}][{file_name}:{line}] {message}{n}",
+        .encoder(Box::new(PatternEncoder::new(
+            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{M:10.10}:{line:3.3}] {m}{n}",
         )))
         .build(log_file_path, Box::new(policy))?;
 
     // 標準出力用のAppender
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
-            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{M:15.15}:{line:3.3}] {m}{n}",
+            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{M:10.10}:{line:3.3}] {m}{n}",
         )))
         .build();
 
