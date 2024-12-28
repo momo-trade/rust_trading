@@ -4,15 +4,16 @@ use crate::hyperliquid::model::{
     CustomUserTokenBalance, TokenDetails,
 };
 use anyhow::{anyhow, Context, Result};
-use ethers::signers::LocalWallet;
 use ethers::types::H160;
+use ethers::{signers::LocalWallet, types::transaction::request};
 use hyperliquid_rust_sdk::{
-    BaseUrl, ClientCancelRequest, ClientLimit, ClientOrder, ClientOrderRequest, ExchangeClient,
-    ExchangeDataStatus, ExchangeResponseStatus, FundingHistoryResponse, InfoClient,
-    UserFundingResponse, UserStateResponse,
+    BaseUrl, ClientCancelRequest, ClientCancelRequestCloid, ClientLimit, ClientOrder,
+    ClientOrderRequest, ExchangeClient, ExchangeDataStatus, ExchangeResponseStatus,
+    FundingHistoryResponse, InfoClient, UserFundingResponse, UserStateResponse,
 };
 use log::{debug, error, info};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct AssetInfo {
@@ -238,6 +239,36 @@ impl HttpClient {
             .cancel(request, None)
             .await
             .context("Failed to cancel order")?;
+
+        match response_status {
+            ExchangeResponseStatus::Ok(exchange_response) => {
+                if let Some(data) = exchange_response.data {
+                    let success = data
+                        .statuses
+                        .iter()
+                        .any(|status| matches!(status, ExchangeDataStatus::Success));
+
+                    if success {
+                        let success_msg = "Order cancelled successfully".to_string();
+                        info!("{}", success_msg);
+                        return Ok(success_msg);
+                    }
+                }
+                Err(anyhow!(
+                    "Unexpected response format: No success status found."
+                ))
+            }
+            ExchangeResponseStatus::Err(err) => Err(anyhow!("Exchange returned an error: {}", err)),
+        }
+    }
+
+    pub async fn cancel_by_cloid(&self, asset: String, cloid: Uuid) -> Result<String> {
+        let request = ClientCancelRequestCloid { asset, cloid };
+        let response_status = self
+            .exchange
+            .cancel_by_cloid(request, None)
+            .await
+            .context("Failed to cancel order by cloid")?;
 
         match response_status {
             ExchangeResponseStatus::Ok(exchange_response) => {
