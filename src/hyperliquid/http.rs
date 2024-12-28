@@ -142,7 +142,6 @@ impl HttpClient {
                     })
                     .flatten()
                     .context("No valid statuses or unexpected status in exchange response.")?;
-                info!("Order placed successfully with oid: {}", oid);
                 Ok(oid)
             }
             ExchangeResponseStatus::Err(err) => Err(anyhow!("Exchange returned an error: {}", err)),
@@ -186,7 +185,6 @@ impl HttpClient {
                     })
                     .flatten()
                     .context("No valid statuses or unexpected status in exchange response.")?;
-                info!("Order placed successfully with oid: {}", oid);
                 Ok(oid)
             }
             ExchangeResponseStatus::Err(err) => Err(anyhow!("Exchange returned an error: {}", err)),
