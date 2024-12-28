@@ -68,13 +68,13 @@ pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Erro
 
     let logfile = RollingFileAppender::builder()
         .encoder(Box::new(CustomEncoder::new(
-            "[{time} {level}][{file_name}:{line}] {message}\n",
+            "[{time} {h({level:<5})}][{file_name}:{line}] {message}\n",
         )))
         .build(log_file_path, Box::new(policy))?;
 
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(CustomEncoder::new(
-            "[{time} {level}][{file_name}:{line}] {message}\n",
+            "[{time} {h({level:<5})}][{file_name}:{line}] {message}\n",
         )))
         .build();
 
