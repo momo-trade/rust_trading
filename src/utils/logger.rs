@@ -6,6 +6,7 @@ use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
 use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
 use log4rs::append::rolling_file::RollingFileAppender;
 use log4rs::config::{Appender, Config, Root};
+use log4rs::encode::pattern::PatternEncoder;
 use log4rs::encode::{Encode, Write};
 use std::env;
 
