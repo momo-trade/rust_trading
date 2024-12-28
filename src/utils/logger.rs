@@ -1,3 +1,4 @@
+use anyhow::Result;
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
@@ -5,9 +6,9 @@ use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
 use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
 use log4rs::append::rolling_file::RollingFileAppender;
 use log4rs::config::{Appender, Config, Root};
+use log4rs::encode::pattern::PatternEncoder;
 use log4rs::encode::{Encode, Write};
 use std::env;
-use anyhow::Result;
 
 #[derive(Debug)]
 struct CustomEncoder {
@@ -24,13 +25,18 @@ impl CustomEncoder {
 
 impl Encode for CustomEncoder {
     fn encode(&self, w: &mut dyn Write, record: &log::Record) -> Result<()> {
-        let file_name = record.file().map(|path| {
-            let file = path.rsplit('/').next().unwrap_or(path);
-            format!("{:<15.15}", file)
-        }).unwrap_or_else(|| format!("{:<15.15}", "unknown"));
+        let file_name = record
+            .file()
+            .map(|path| {
+                let file = path.rsplit('/').next().unwrap_or(path);
+                format!("{:<15.15}", file)
+            })
+            .unwrap_or_else(|| format!("{:<15.15}", "unknown"));
 
         let module_path = record.module_path().unwrap_or("unknown");
-        let line = record.line().map_or("unknown".to_string(), |line| format!("{:>3}", line));
+        let line = record
+            .line()
+            .map_or("unknown".to_string(), |line| format!("{:>3}", line));
 
         let mut output = self.pattern.clone();
         output = output.replace("{file_name}", &file_name);
@@ -38,7 +44,12 @@ impl Encode for CustomEncoder {
         output = output.replace("{line}", &line);
         output = output.replace("{message}", &record.args().to_string());
         output = output.replace("{level}", &format!("{:<5}", record.level().to_string()));
-        output = output.replace("{time}", &chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f").to_string());
+        output = output.replace(
+            "{time}",
+            &chrono::Local::now()
+                .format("%Y-%m-%dT%H:%M:%S%.3f")
+                .to_string(),
+        );
 
         w.write_all(output.as_bytes())?;
         Ok(())
@@ -67,14 +78,14 @@ pub fn setup_logging(log_file_path: &str) -> Result<(), Box<dyn std::error::Erro
     );
 
     let logfile = RollingFileAppender::builder()
-        .encoder(Box::new(CustomEncoder::new(
-            "[{time} {h({level:<5})}][{file_name}:{line}] {message}\n",
+        .encoder(Box::new(PatternEncoder::new(
+            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{M}:{L}] {m}{n}",
         )))
         .build(log_file_path, Box::new(policy))?;
 
     let stdout = ConsoleAppender::builder()
-        .encoder(Box::new(CustomEncoder::new(
-            "[{time} {h({level:<5})}][{file_name}:{line}] {message}\n",
+        .encoder(Box::new(PatternEncoder::new(
+            "[{d(%Y-%m-%dT%H:%M:%S.%3f)} {h({l:5.5})}][{M}:{L}] {m}{n}",
         )))
         .build();
 
