@@ -143,6 +143,12 @@ pub struct CustomOrderStatus {
     pub reduce_only: bool,
     pub order_type: String,
     pub tif: String,
+    pub orig_size: f64,
+    pub trigger_condition: String,
+    pub is_trigger: bool,
+    pub trigger_price: f64,
+    pub is_position_tpsl: bool,
+    pub cloid: Option<String>,
 }
 
 impl From<OrderStatusResponse> for CustomOrderStatus {
@@ -152,14 +158,20 @@ impl From<OrderStatusResponse> for CustomOrderStatus {
             CustomOrderStatus {
                 coin: order.coin,
                 side: order.side,
-                price: order.limit_px.parse().unwrap_or(0.0), // Convert the "price" field from string to f64
-                size: order.sz.parse().unwrap_or(0.0), // Convert the "size" field from string to f64
+                price: order.limit_px.parse().unwrap_or(0.0), // Convert the "limit_px" field from string to f64
+                size: order.sz.parse().unwrap_or(0.0), // Convert the "sz" field from string to f64
                 order_id: order.oid,
                 timestamp: order.timestamp,
-                status: order_info.status, // Use the status field from OrderInfo
+                status: order_info.status.clone(), // Use the status field from OrderInfo
                 reduce_only: order.reduce_only,
-                order_type: order.order_type,
-                tif: order.tif,
+                order_type: order.order_type.clone(),
+                tif: order.tif.clone(),
+                orig_size: order.orig_sz.parse().unwrap_or(0.0), // Convert "orig_sz" from string to f64
+                trigger_condition: order.trigger_condition.clone(),
+                is_trigger: order.is_trigger,
+                trigger_price: order.trigger_px.parse().unwrap_or(0.0), // Convert "trigger_px" from string to f64
+                is_position_tpsl: order.is_position_tpsl,
+                cloid: order.cloid.clone(),
             }
         } else {
             // Handle case where `response.order` is `None`
@@ -174,6 +186,12 @@ impl From<OrderStatusResponse> for CustomOrderStatus {
                 reduce_only: false,
                 order_type: "".to_string(),
                 tif: "".to_string(),
+                orig_size: 0.0,
+                trigger_condition: "".to_string(),
+                is_trigger: false,
+                trigger_price: 0.0,
+                is_position_tpsl: false,
+                cloid: None,
             }
         }
     }

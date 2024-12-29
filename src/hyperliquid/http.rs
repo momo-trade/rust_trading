@@ -300,6 +300,21 @@ impl HttpClient {
         Ok(open_orders)
     }
 
+    pub async fn fetch_order_by_cloid(&self, _address: String, _cloid: String) -> Result<()> {
+        todo!("fetch_order_by_cloid")
+    }
+
+    pub async fn fetch_order_by_oid(&self, address: H160, oid: u64) -> Result<CustomOrderStatus> {
+        let response = self
+            .info
+            .query_order_by_oid(address, oid)
+            .await
+            .context("Failed to fetch order by oid")?;
+
+        let order_status: CustomOrderStatus = response.into();
+        Ok(order_status)
+    }
+
     // Perp positinos
     pub async fn fetch_user_state(&self, address: H160) -> Result<UserStateResponse> {
         let response = self
