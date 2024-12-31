@@ -1,5 +1,6 @@
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct LimitOrderParams {
     pub asset: String,
     pub is_buy: bool,
@@ -39,6 +40,7 @@ impl LimitOrderParams {
     }
 }
 
+#[derive(Debug)]
 pub struct MarketOrderParams {
     pub asset: String,
     pub is_buy: bool,
