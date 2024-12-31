@@ -9,9 +9,9 @@ use tokio_postgres::NoTls;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let user = H160::from_str("0xa41daC65fa1F0248b3914540574f2F81516d20d4").unwrap();
+    let user = H160::from_str("your public key").unwrap();
     let (client, connection) = tokio_postgres::connect(
-        "host=localhost user=postgres password=Postgres-Master dbname=rust_trading",
+        "host=localhost user=postgres password=password dbname=db_name",
         NoTls,
     )
     .await?;
