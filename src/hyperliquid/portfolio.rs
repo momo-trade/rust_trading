@@ -67,7 +67,6 @@ impl PortfolioManager {
             position.amount += fill_amount;
 
             if position.amount == 0.0 {
-                // ポジション完全解消
                 position.average_price = 0.0;
             }
 
