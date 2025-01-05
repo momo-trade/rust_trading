@@ -54,27 +54,29 @@ impl PortfolioManager {
             // New position
             position.amount = fill_amount;
             position.average_price = fill.price;
+        } else if (position.amount > 0.0 && fill_amount > 0.0)
+            || (position.amount < 0.0 && fill_amount < 0.0)
+        {
+            // Same direction trade (increase position)
+            let total_cost = position.amount * position.average_price + fill_amount * fill.price;
+            position.amount += fill_amount;
+            position.average_price = total_cost / position.amount.abs();
         } else {
-            // Update existing position
-            if (position.amount > 0.0 && fill_amount > 0.0)
-                || (position.amount < 0.0 && fill_amount < 0.0)
-            {
-                // Same direction trade (increase position)
-                let total_cost =
-                    position.amount * position.average_price + fill_amount * fill.price;
-                position.amount += fill_amount;
-                position.average_price = total_cost / position.amount.abs();
-            } else {
-                // Opposite direction trade (decrease or reverse position)
-                position.amount += fill_amount;
-                if position.amount != 0.0 {
-                    position.average_price = fill.price;
-                }
+            // Opposite direction trade (decrease or reverse position)
+            let previous_amount = position.amount;
+            position.amount += fill_amount;
+
+            if position.amount == 0.0 {
+                // ポジション完全解消
+                position.average_price = 0.0;
             }
+
+            // Realized PnL calculation
+            position.pnl.realized +=
+                (fill.price - position.average_price) * previous_amount.abs().min(fill.size);
         }
 
         // Update realized PnL and fees
-        position.pnl.realized += fill.closed_pnl;
         if is_buy {
             position.pnl.fee_in_token += fill.fee; // Fee in token for buy
             position.amount -= fill.fee; // Subtract fee from amount
