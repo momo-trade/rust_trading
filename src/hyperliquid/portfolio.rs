@@ -53,10 +53,8 @@ impl PortfolioManager {
         // Update position
         if position.amount.abs() < POSITION_THRESHOLD {
             // If the position is below the threshold, reset it after calculating Realized PnL
-            position.pnl.realized +=
-                (fill.price - position.average_price) * position.amount.abs().min(fill.size);
-            position.amount = 0.0; // Reset position amount
-            position.average_price = 0.0; // Reset average price
+            position.amount = fill_amount; // Set the new position directly
+            position.average_price = fill.price; // Set the average price to the current fill price
         } else if (position.amount > 0.0 && fill_amount > 0.0)
             || (position.amount < 0.0 && fill_amount < 0.0)
         {
