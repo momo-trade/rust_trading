@@ -48,9 +48,10 @@ impl PortfolioManager {
 
         let is_buy = fill.side == "B";
         let fill_amount = if is_buy { fill.size } else { -fill.size };
+        const POSITION_THRESHOLD: f64 = 0.01; //TODO: Change to a more appropriate value
 
         // Update position
-        if position.amount == 0.0 {
+        if position.amount.abs() < POSITION_THRESHOLD {
             // New position
             position.amount = fill_amount;
             position.average_price = fill.price;
@@ -66,7 +67,8 @@ impl PortfolioManager {
             let previous_amount = position.amount;
             position.amount += fill_amount;
 
-            if position.amount == 0.0 {
+            if position.amount.abs() < POSITION_THRESHOLD {
+                position.amount = 0.0;
                 position.average_price = 0.0;
             }
 
