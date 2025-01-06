@@ -48,42 +48,45 @@ impl PortfolioManager {
 
         let is_buy = fill.side == "B";
         let fill_amount = if is_buy { fill.size } else { -fill.size };
-        const POSITION_THRESHOLD: f64 = 0.01; //TODO: Change to a more appropriate value
+        const POSITION_THRESHOLD: f64 = 0.01; // Minimum threshold to consider position as active
 
         // Update position
         if position.amount.abs() < POSITION_THRESHOLD {
-            // New position
-            position.amount = fill_amount;
-            position.average_price = fill.price;
+            // If the position is below the threshold, reset it after calculating Realized PnL
+            position.pnl.realized +=
+                (fill.price - position.average_price) * position.amount.abs().min(fill.size);
+            position.amount = 0.0; // Reset position amount
+            position.average_price = 0.0; // Reset average price
         } else if (position.amount > 0.0 && fill_amount > 0.0)
             || (position.amount < 0.0 && fill_amount < 0.0)
         {
-            // Same direction trade (increase position)
+            // Increase position in the same direction
             let total_cost = position.amount * position.average_price + fill_amount * fill.price;
             position.amount += fill_amount;
-            position.average_price = total_cost / position.amount.abs();
+            position.average_price = total_cost / position.amount.abs(); // Recalculate average price
         } else {
-            // Opposite direction trade (decrease or reverse position)
+            // Reduce or reverse position
             let previous_amount = position.amount;
             position.amount += fill_amount;
 
+            // Calculate Realized PnL for the reduced portion of the position
+            position.pnl.realized +=
+                (fill.price - position.average_price) * previous_amount.abs().min(fill.size);
+
             if position.amount.abs() < POSITION_THRESHOLD {
+                // If position becomes negligible, reset it
                 position.amount = 0.0;
                 position.average_price = 0.0;
             }
-
-            // Realized PnL calculation
-            position.pnl.realized +=
-                (fill.price - position.average_price) * previous_amount.abs().min(fill.size);
         }
 
-        // Update realized PnL and fees
+        // Update fees and adjust position amount for fees
         if is_buy {
-            position.pnl.fee_in_token += fill.fee; // Fee in token for buy
-            position.amount -= fill.fee; // Subtract fee from amount
+            position.pnl.fee_in_token += fill.fee; // Update fee for buy
+            position.amount -= fill.fee; // Deduct fee from position amount
         } else {
-            position.pnl.fee_in_usdc += fill.fee; // Fee in USDC for sell
-            position.pnl.realized -= fill.fee; // Subtract fee from realized PnL
+            position.pnl.fee_in_usdc += fill.fee; // Update fee for sell
+            position.pnl.realized -= fill.fee; // Deduct fee from Realized PnL
         }
     }
 
